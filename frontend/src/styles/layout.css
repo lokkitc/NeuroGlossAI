@@ -1,0 +1,19 @@
+#root {
+  min-height: 100vh;
+}
+
+.ng-container {
+  width: min(1100px, calc(100% - 2 * var(--space-6)));
+  margin: 0 auto;
+}
+
+.ng-page {
+  padding: var(--space-8) 0;
+}
+
+.ng-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}

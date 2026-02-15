@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: neurogloss_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./backend/data:/app/data # Persist SQLite DB if used
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://neurogloss:neurogloss@db/neurogloss
+      - SECRET_KEY=dev-secret-change-me
+      - GROQ_API_KEY=
+      # Fallback to SQLite if DB container is removed/not used:
+      # - DATABASE_URL=sqlite+aiosqlite:///./data/neurogloss.db
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    container_name: neurogloss_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=neurogloss
+      - POSTGRES_PASSWORD=neurogloss
+      - POSTGRES_DB=neurogloss
+    ports:
+      - "5433:5432"
+    restart: always
+
+volumes:
+  postgres_data:

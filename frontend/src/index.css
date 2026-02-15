@@ -1,0 +1,42 @@
+@import './styles/globals.css';
+
+input,
+select,
+textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(154, 164, 178, 0.75);
+}
+
+button {
+  border-radius: 14px;
+  border: 1px solid rgba(31, 36, 48, 0.10);
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 900;
+  font-family: var(--font);
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.95), rgba(124, 58, 237, 0.95));
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: var(--shadow-press);
+  transform: translateY(0);
+}
+
+button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 rgba(31, 36, 48, 0.18);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
