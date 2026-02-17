@@ -19,8 +19,8 @@ class User(Base):
 
     # Геймификация
     xp = Column(Integer, default=0)
-    language_levels = Column(JSON, default={}) # {"Kazakh": "A1", "English": "B2"}
-    interests = Column(JSON, default=[]) # Список интересов пользователя (например, ["Mobile Legends", "Cooking"])
+    language_levels = Column(JSON, default=dict) # {"Kazakh": "A1", "English": "B2"}
+    interests = Column(JSON, default=list) # Список интересов пользователя (например, ["Mobile Legends", "Cooking"])
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
