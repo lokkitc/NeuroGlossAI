@@ -323,6 +323,55 @@ class CourseService:
                     .where(CourseLevelTemplate.order == lvl.order + 1)
                 )
                 next_lvl = next_lvl_res.scalars().first()
+                if not next_lvl:
+                    # Если последний уровень в уните то разблокируем следующий унит
+                    unit_res = await self.db.execute(
+                        select(CourseUnitTemplate).where(CourseUnitTemplate.id == lvl.unit_template_id)
+                    )
+                    unit = unit_res.scalars().first()
+
+                    next_unit = None
+                    if unit is not None:
+                        next_unit_res = await self.db.execute(
+                            select(CourseUnitTemplate)
+                            .where(CourseUnitTemplate.section_template_id == unit.section_template_id)
+                            .where(CourseUnitTemplate.order == unit.order + 1)
+                        )
+                        next_unit = next_unit_res.scalars().first()
+
+                        if next_unit is None:
+                            sec_res = await self.db.execute(
+                                select(CourseSectionTemplate).where(
+                                    CourseSectionTemplate.id == unit.section_template_id
+                                )
+                            )
+                            sec = sec_res.scalars().first()
+                            if sec is not None:
+                                next_sec_res = await self.db.execute(
+                                    select(CourseSectionTemplate)
+                                    .where(CourseSectionTemplate.course_template_id == sec.course_template_id)
+                                    .where(CourseSectionTemplate.order == sec.order + 1)
+                                )
+                                next_sec = next_sec_res.scalars().first()
+                                if next_sec is not None:
+                                    next_unit_res = await self.db.execute(
+                                        select(CourseUnitTemplate)
+                                        .where(CourseUnitTemplate.section_template_id == next_sec.id)
+                                        .order_by(CourseUnitTemplate.order)
+                                        .limit(1)
+                                    )
+                                    next_unit = next_unit_res.scalars().first()
+
+                    if next_unit is not None:
+                        next_lvl_res = await self.db.execute(
+                            select(CourseLevelTemplate)
+                            .where(CourseLevelTemplate.unit_template_id == next_unit.id)
+                            .where(CourseLevelTemplate.type == 'lesson')
+                            .order_by(CourseLevelTemplate.order)
+                            .limit(1)
+                        )
+                        next_lvl = next_lvl_res.scalars().first()
+
                 if next_lvl:
                     next_prog_res = await self.db.execute(
                         select(UserLevelProgress)
