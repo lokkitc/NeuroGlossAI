@@ -11,12 +11,8 @@ services:
     volumes:
       - ./backend:/app
       - ./backend/data:/app/data # Persist SQLite DB if used
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://neurogloss:neurogloss@db/neurogloss
-      - SECRET_KEY=dev-secret-change-me
-      - GROQ_API_KEY=
-      # Fallback to SQLite if DB container is removed/not used:
-      # - DATABASE_URL=sqlite+aiosqlite:///./data/neurogloss.db
+    env_file:
+      - ./backend/.env
     depends_on:
       - db
     restart: always
