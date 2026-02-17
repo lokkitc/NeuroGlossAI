@@ -105,6 +105,7 @@ class CourseService:
         self,
         user: User,
         interests: list[str] | None = None,
+        theme: str | None = None,
         level: str = "A1",
         regenerate: bool = True,
     ) -> Enrollment:
@@ -121,18 +122,20 @@ class CourseService:
             await self.db.commit()
 
         interests_str = ", ".join(interests) if interests else "General"
+        theme_str = str(theme).strip() if theme else interests_str
         ai_data = await ai_service.generate_course_path(
             target_language=user.target_language,
             native_language=user.native_language,
             level=level,
             interests=interests_str,
+            theme=theme_str,
             db=self.db,
         )
         sections_data = ai_data.get("sections", [])
 
         course = CourseTemplate(
             target_language=user.target_language,
-            theme=interests_str,
+            theme=theme_str,
             cefr_level=level,
             version=1,
             is_active=True,

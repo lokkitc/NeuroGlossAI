@@ -49,6 +49,7 @@ class ActiveCourseResponse(BaseModel):
 
 class CourseGenerateRequest(BaseModel):
     interests: List[str] = []
+    theme: str | None = None
     level: str = "A1"
     regenerate: bool = True
 

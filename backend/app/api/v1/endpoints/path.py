@@ -26,6 +26,7 @@ router = APIRouter()
 
 class FullCourseGenerationRequest(BaseModel):
     interests: List[str] = []
+    theme: str | None = None
     level: str = "A1"
     max_topics: int = 3
     sleep_seconds: float = 0.0
@@ -60,7 +61,20 @@ async def get_user_path(
 @router.post("/generate", response_model=ActiveCourseResponse)
 async def generate_user_path(
     request: Request,
-    body: CourseGenerateRequest = Body(default=CourseGenerateRequest()),
+    body: CourseGenerateRequest = Body(
+        default=CourseGenerateRequest(),
+        examples={
+            "themed": {
+                "summary": "Themed course generation",
+                "value": {
+                    "interests": [],
+                    "theme": "Mobile Legends Bang Bang",
+                    "level": "A1",
+                    "regenerate": True,
+                },
+            }
+        },
+    ),
     current_user: User = Depends(deps.get_current_user),
     service: CourseService = Depends(deps.get_course_service)
 ) -> Any:
@@ -70,6 +84,7 @@ async def generate_user_path(
     await service.generate_course_for_user(
         user=current_user,
         interests=body.interests,
+        theme=body.theme,
         level=body.level,
         regenerate=body.regenerate,
     )
@@ -82,7 +97,24 @@ async def generate_user_path(
 @router.post("/generate-full")
 async def generate_full_course(
     request: Request,
-    body: FullCourseGenerationRequest = Body(default=FullCourseGenerationRequest()),
+    body: FullCourseGenerationRequest = Body(
+        default=FullCourseGenerationRequest(),
+        examples={
+            "themed": {
+                "summary": "Themed full generation (path + lessons)",
+                "value": {
+                    "interests": [],
+                    "theme": "Mobile Legends Bang Bang",
+                    "level": "A1",
+                    "max_topics": 3,
+                    "sleep_seconds": 0,
+                    "regenerate_path": True,
+                    "force_regenerate_lessons": False,
+                    "generation_mode": "balanced",
+                },
+            }
+        },
+    ),
     current_user: User = Depends(deps.get_current_user),
     path_service: CourseService = Depends(deps.get_course_service),
     learning_service: LearningService = Depends(deps.get_learning_service),
@@ -99,6 +131,7 @@ async def generate_full_course(
         await path_service.generate_course_for_user(
             user=current_user,
             interests=body.interests,
+            theme=body.theme,
             level=body.level,
             regenerate=True,
         )

@@ -1131,16 +1131,20 @@ class AIService:
         native_language: str,
         level: str,
         interests: str = "General",
+        theme: str | None = None,
         *,
         db: AsyncSession | None = None,
     ) -> dict:
         if not settings.AI_ENABLED:
             raise ServiceException("AI is disabled")
+
+        theme_str = str(theme).strip() if theme else str(interests or "General").strip()
         prompt = PATH_GENERATION_TEMPLATE.format(
             target_language=target_language,
             native_language=native_language,
             level=level,
-            interests=interests
+            theme=theme_str,
+            interests=interests,
         )
 
         try:
