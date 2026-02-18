@@ -6,6 +6,7 @@
 """
 
 import json
+import asyncio
 from groq import AsyncGroq
 from app.core.config import settings
 from app.core.ai.base import LLMProvider
@@ -30,7 +31,7 @@ class GroqProvider(LLMProvider):
         if not self.client:
             raise ValueError("Groq client is not initialized. Check GROQ_API_KEY.")
 
-    async def generate_json(self, prompt: str) -> Dict[str, Any]:
+    async def generate_json(self, prompt: str, *, temperature: float | None = None) -> Dict[str, Any]:
         await self._ensure_client()
         
         # Убедитесь, что модель знает, что она должна выдавать джейсон
@@ -46,19 +47,28 @@ class GroqProvider(LLMProvider):
                 raise ValueError("No JSON object found in response")
             return text[start : end + 1]
 
+        timeout = float(getattr(settings, "AI_REQUEST_TIMEOUT_SECONDS", 30) or 30)
+        max_chars = int(getattr(settings, "AI_MAX_RESPONSE_CHARS", 200000) or 200000)
+
         try:
-            chat_completion = await self.client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                model=self.model,
-                response_format={"type": "json_object"},
+            chat_completion = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        }
+                    ],
+                    model=self.model,
+                    response_format={"type": "json_object"},
+                    **({"temperature": float(temperature)} if temperature is not None else {}),
+                ),
+                timeout=timeout,
             )
             content = chat_completion.choices[0].message.content
             logger.debug("Groq JSON response received")
+            if content and len(content) > max_chars:
+                raise ValueError("Groq response too large")
             return json.loads(content)
         except Exception as e:
             message = str(e)
@@ -74,45 +84,68 @@ class GroqProvider(LLMProvider):
                 raise
 
             logger.warning("Groq strict JSON mode failed, retrying without response_format")
-            chat_completion = await self.client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt + "\n\nIMPORTANT: Output ONLY valid JSON.",
-                    }
-                ],
-                model=self.model,
+            chat_completion = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt + "\n\nIMPORTANT: Output ONLY valid JSON.",
+                        }
+                    ],
+                    model=self.model,
+                    **({"temperature": float(temperature)} if temperature is not None else {}),
+                ),
+                timeout=timeout,
             )
             content = chat_completion.choices[0].message.content
+            if content and len(content) > max_chars:
+                raise ValueError("Groq response too large")
             extracted = _extract_json_object(content)
             return json.loads(extracted)
 
-    async def generate_text(self, prompt: str) -> str:
+    async def generate_text(self, prompt: str, *, temperature: float | None = None) -> str:
         await self._ensure_client()
+        timeout = float(getattr(settings, "AI_REQUEST_TIMEOUT_SECONDS", 30) or 30)
+        max_chars = int(getattr(settings, "AI_MAX_RESPONSE_CHARS", 200000) or 200000)
         try:
-            chat_completion = await self.client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                model=self.model,
+            chat_completion = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        }
+                    ],
+                    model=self.model,
+                    **({"temperature": float(temperature)} if temperature is not None else {}),
+                ),
+                timeout=timeout,
             )
-            return chat_completion.choices[0].message.content
+            content = chat_completion.choices[0].message.content
+            if content and len(content) > max_chars:
+                return content[:max_chars]
+            return content
         except Exception as e:
             logger.exception("Groq API Text Error")
             raise e
 
-    async def generate_chat(self, messages: List[Dict[str, str]]) -> str:
+    async def generate_chat(self, messages: List[Dict[str, str]], *, temperature: float | None = None) -> str:
         await self._ensure_client()
+        timeout = float(getattr(settings, "AI_REQUEST_TIMEOUT_SECONDS", 30) or 30)
+        max_chars = int(getattr(settings, "AI_MAX_RESPONSE_CHARS", 200000) or 200000)
         try:
-            chat_completion = await self.client.chat.completions.create(
-                messages=messages,
-                model=self.model,
+            chat_completion = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    messages=messages,
+                    model=self.model,
+                    **({"temperature": float(temperature)} if temperature is not None else {}),
+                ),
+                timeout=timeout,
             )
             content = chat_completion.choices[0].message.content
             logger.debug("Groq chat response received")
+            if content and len(content) > max_chars:
+                return content[:max_chars]
             return content
         except Exception as e:
             logger.exception("Groq API Chat Error")
