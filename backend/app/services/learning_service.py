@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 import uuid
 import time
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.models.user import User
 from app.models.enrollment import Enrollment
@@ -431,7 +433,7 @@ class LearningService:
     ) -> GeneratedLesson | None:
         return await self.generated_repo.get_by_id_and_enrollment(lesson_id, enrollment_id)
 
-    async def get_daily_review_items(self, user_id: int):
+    async def get_daily_review_items(self, user_id: uuid.UUID):
         now = datetime.utcnow()
         items = await self.user_lexeme_repo.get_daily_review(user_id=user_id, now=now)
         out: list[dict] = []
@@ -449,7 +451,7 @@ class LearningService:
             )
         return out
 
-    async def process_vocabulary_review(self, user_id: int, review_data: VocabularyReviewRequest) -> dict | None:
+    async def process_vocabulary_review(self, user_id: uuid.UUID, review_data: VocabularyReviewRequest) -> dict | None:
         # Принимаем оба варианта:
         # - нормализованный идентификатор записи словаря пользователя
         # - идентификатор сгенерированного словаря, который приходит в ответе урока
@@ -471,16 +473,40 @@ class LearningService:
                 return None
 
             # Маппинг к нормализованному словарю (по возможности).
-            # Язык пользователя здесь недоступен; аккуратно работаем только по сохранённому слову.
+            # Язык берём из связки урок -> enrollment -> course_template.
             normalized = _normalize_word(str(word))
+
+            target_language = None
+            try:
+                res = await self.db.execute(
+                    select(Enrollment)
+                    .join(GeneratedLesson, GeneratedLesson.enrollment_id == Enrollment.id)
+                    .where(GeneratedLesson.id == gvi.generated_lesson_id)
+                    .options(selectinload(Enrollment.course_template))
+                )
+                enr = res.scalars().first()
+                if enr is not None and getattr(enr, "course_template", None) is not None:
+                    target_language = getattr(enr.course_template, "target_language", None)
+            except Exception:
+                target_language = None
+
+            if not target_language:
+                # Fallback: используем текущий язык пользователя, если он задан.
+                ures = await self.db.execute(select(User).where(User.id == user_id))
+                uobj = ures.scalars().first()
+                target_language = getattr(uobj, "target_language", None) if uobj is not None else None
+
+            if not target_language:
+                return None
+
             lexeme = await self.lexeme_repo.get_by_lang_and_normalized(
-                target_language="unknown",
+                target_language=str(target_language),
                 normalized=normalized,
             )
             if lexeme is None:
                 lexeme = await self.lexeme_repo.create(
                     Lexeme(
-                        target_language="unknown",
+                        target_language=str(target_language),
                         text=str(word),
                         normalized=normalized,
                     )

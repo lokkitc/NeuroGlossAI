@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 from app.schemas.user import TokenData
+from uuid import UUID
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
@@ -22,14 +23,18 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        sub: str = payload.get("sub")
+        if sub is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
+        try:
+            user_id = UUID(str(sub))
+        except Exception:
+            raise credentials_exception
+        token_data = TokenData(user_id=user_id)
     except JWTError:
         raise credentials_exception
     
-    result = await db.execute(select(User).where(User.username == token_data.username))
+    result = await db.execute(select(User).where(User.id == token_data.user_id))
     user = result.scalars().first()
     
     if user is None:

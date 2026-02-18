@@ -1,5 +1,5 @@
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
@@ -7,6 +7,7 @@ from app.core import security
 from app.services.auth_service import AuthService
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.models.user import User
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -25,7 +26,9 @@ async def register(
     return user
 
 @router.post("/login", response_model=Token)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     db: AsyncSession = Depends(deps.get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
@@ -36,7 +39,7 @@ async def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = security.create_access_token(subject=user.username)
+    access_token = security.create_access_token(subject=user.id)
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)

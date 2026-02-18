@@ -12,6 +12,7 @@ from app.schemas.course import ActiveCourseResponse, CourseGenerateRequest, Prog
 from app.services.course_service import CourseService
 from app.services.learning_service import LearningService
 from app.core.exceptions import EntityNotFoundException, ServiceException
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -95,6 +96,7 @@ async def generate_user_path(
 
 
 @router.post("/generate-full")
+@limiter.limit("2/minute")
 async def generate_full_course(
     request: Request,
     body: FullCourseGenerationRequest = Body(
@@ -234,6 +236,7 @@ async def generate_full_course(
 
 
 @router.post("/retry-lessons")
+@limiter.limit("2/minute")
 async def retry_lessons(
     request: Request,
     body: RetryLessonsRequest = Body(default=RetryLessonsRequest()),

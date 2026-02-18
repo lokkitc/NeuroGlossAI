@@ -1,9 +1,10 @@
 from typing import Any
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from app.api import deps
 from app.services.learning_service import LearningService
 from app.models.user import User
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 
@@ -16,7 +17,9 @@ class ChatRequest(BaseModel):
     level: str
 
 @router.post("/chat")
+@limiter.limit("20/minute")
 async def chat_roleplay(
+    request: Request,
     chat_in: ChatRequest,
     current_user: User = Depends(deps.get_current_user),
     service: LearningService = Depends(deps.get_learning_service)
