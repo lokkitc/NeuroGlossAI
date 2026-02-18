@@ -7,6 +7,10 @@ build
 .expo-shared
 web-build
 
+# backend/
+# frontend/*
+.figma/
+
 # Python
 __pycache__
 *.py[cod]
