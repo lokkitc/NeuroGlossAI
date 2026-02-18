@@ -34,9 +34,9 @@ class UserLexeme(Base):
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
 
-    user_id = Column(GUID, ForeignKey("users.id"), nullable=False)
-    enrollment_id = Column(GUID, ForeignKey("enrollments.id"), nullable=True)
-    lexeme_id = Column(GUID, ForeignKey("lexemes.id"), nullable=False)
+    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    enrollment_id = Column(GUID, ForeignKey("enrollments.id", ondelete="SET NULL"), nullable=True)
+    lexeme_id = Column(GUID, ForeignKey("lexemes.id", ondelete="CASCADE"), nullable=False)
 
     translation_preferred = Column(String, nullable=True)
     context_sentence_preferred = Column(String, nullable=True)
@@ -63,9 +63,9 @@ class LessonLexeme(Base):
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
 
-    generated_lesson_id = Column(GUID, ForeignKey("generated_lessons.id"), nullable=False)
-    lexeme_id = Column(GUID, ForeignKey("lexemes.id"), nullable=False)
-    user_lexeme_id = Column(GUID, ForeignKey("user_lexemes.id"), nullable=True)
+    generated_lesson_id = Column(GUID, ForeignKey("generated_lessons.id", ondelete="CASCADE"), nullable=False)
+    lexeme_id = Column(GUID, ForeignKey("lexemes.id", ondelete="CASCADE"), nullable=False)
+    user_lexeme_id = Column(GUID, ForeignKey("user_lexemes.id", ondelete="SET NULL"), nullable=True)
 
     translation = Column(String, nullable=True)
     context_sentence = Column(String, nullable=True)

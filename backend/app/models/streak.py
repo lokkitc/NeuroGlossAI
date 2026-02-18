@@ -8,7 +8,7 @@ class Streak(Base):
     __tablename__ = "streaks"
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    user_id = Column(GUID, ForeignKey("users.id"))
+    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"))
     
     current_streak = Column(Integer, default=0)
     last_activity_date = Column(Date)
