@@ -14,8 +14,8 @@ class Enrollment(Base):
     )
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    user_id = Column(GUID, ForeignKey("users.id"), nullable=False)
-    course_template_id = Column(GUID, ForeignKey("course_templates.id"), nullable=False)
+    user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    course_template_id = Column(GUID, ForeignKey("course_templates.id", ondelete="RESTRICT"), nullable=False)
 
     status = Column(String, nullable=False, default="active")
     created_at = Column(DateTime(timezone=True), server_default=func.now())

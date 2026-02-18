@@ -12,9 +12,9 @@ class UserLevelAttempt(Base):
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
 
-    enrollment_id = Column(GUID, ForeignKey("enrollments.id"), nullable=False)
-    level_template_id = Column(GUID, ForeignKey("course_level_templates.id"), nullable=False)
-    progress_id = Column(GUID, ForeignKey("user_level_progress.id"), nullable=False)
+    enrollment_id = Column(GUID, ForeignKey("enrollments.id", ondelete="CASCADE"), nullable=False)
+    level_template_id = Column(GUID, ForeignKey("course_level_templates.id", ondelete="RESTRICT"), nullable=False)
+    progress_id = Column(GUID, ForeignKey("user_level_progress.id", ondelete="CASCADE"), nullable=False)
 
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     finished_at = Column(DateTime(timezone=True), nullable=True)

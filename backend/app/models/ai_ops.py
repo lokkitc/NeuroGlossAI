@@ -31,8 +31,8 @@ class AIGenerationEvent(Base):
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
 
-    enrollment_id = Column(GUID, ForeignKey("enrollments.id"), nullable=True)
-    generated_lesson_id = Column(GUID, ForeignKey("generated_lessons.id"), nullable=True)
+    enrollment_id = Column(GUID, ForeignKey("enrollments.id", ondelete="SET NULL"), nullable=True)
+    generated_lesson_id = Column(GUID, ForeignKey("generated_lessons.id", ondelete="SET NULL"), nullable=True)
 
     operation = Column(String, nullable=False, default="")
     provider = Column(String, nullable=True)

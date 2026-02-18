@@ -22,8 +22,8 @@ class UserLevelProgress(Base):
     )
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    enrollment_id = Column(GUID, ForeignKey("enrollments.id"), nullable=False)
-    level_template_id = Column(GUID, ForeignKey("course_level_templates.id"), nullable=False)
+    enrollment_id = Column(GUID, ForeignKey("enrollments.id", ondelete="CASCADE"), nullable=False)
+    level_template_id = Column(GUID, ForeignKey("course_level_templates.id", ondelete="RESTRICT"), nullable=False)
 
     status = Column(String, nullable=False, default=ProgressStatus.LOCKED.value)
     stars = Column(Integer, nullable=False, default=0)

@@ -15,8 +15,8 @@ class GeneratedLesson(Base):
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
 
-    enrollment_id = Column(GUID, ForeignKey("enrollments.id"), nullable=False)
-    level_template_id = Column(GUID, ForeignKey("course_level_templates.id"), nullable=False)
+    enrollment_id = Column(GUID, ForeignKey("enrollments.id", ondelete="CASCADE"), nullable=False)
+    level_template_id = Column(GUID, ForeignKey("course_level_templates.id", ondelete="RESTRICT"), nullable=False)
 
     topic_snapshot = Column(String, nullable=True)
     prompt_version = Column(String, nullable=True)
@@ -48,9 +48,9 @@ class GeneratedVocabularyItem(Base):
     __tablename__ = "generated_vocabulary_items"
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    generated_lesson_id = Column(GUID, ForeignKey("generated_lessons.id"), nullable=False)
+    generated_lesson_id = Column(GUID, ForeignKey("generated_lessons.id", ondelete="CASCADE"), nullable=False)
 
-    user_lexeme_id = Column(GUID, ForeignKey("user_lexemes.id"), nullable=True)
+    user_lexeme_id = Column(GUID, ForeignKey("user_lexemes.id", ondelete="SET NULL"), nullable=True)
 
     word = Column(String, nullable=True)
     translation = Column(String, nullable=True)

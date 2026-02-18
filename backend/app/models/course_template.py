@@ -18,6 +18,8 @@ class CourseTemplate(Base):
 
     slug = Column(String, nullable=True)
 
+    created_by_user_id = Column(GUID, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+
     target_language = Column(String, nullable=False)
     theme = Column(String, nullable=True)
     cefr_level = Column(String, nullable=False, default="A1")
@@ -43,7 +45,7 @@ class CourseSectionTemplate(Base):
     )
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    course_template_id = Column(GUID, ForeignKey("course_templates.id"), nullable=False)
+    course_template_id = Column(GUID, ForeignKey("course_templates.id", ondelete="CASCADE"), nullable=False)
 
     order = Column(Integer, nullable=False)
     title = Column(String, nullable=False)
@@ -65,7 +67,7 @@ class CourseUnitTemplate(Base):
     )
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    section_template_id = Column(GUID, ForeignKey("course_section_templates.id"), nullable=False)
+    section_template_id = Column(GUID, ForeignKey("course_section_templates.id", ondelete="CASCADE"), nullable=False)
 
     order = Column(Integer, nullable=False)
     topic = Column(String, nullable=False)
@@ -88,7 +90,7 @@ class CourseLevelTemplate(Base):
     )
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
-    unit_template_id = Column(GUID, ForeignKey("course_unit_templates.id"), nullable=False)
+    unit_template_id = Column(GUID, ForeignKey("course_unit_templates.id", ondelete="CASCADE"), nullable=False)
 
     order = Column(Integer, nullable=False)
     type = Column(String, nullable=False, default="lesson")
