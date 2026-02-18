@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
+import secrets
+import hashlib
 from jose import jwt
 from passlib.context import CryptContext
 from app.core.config import settings
@@ -22,3 +24,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
+
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256((token or "").encode("utf-8", errors="ignore")).hexdigest()
