@@ -57,7 +57,7 @@ Create exercises of these types:
 - quiz (multiple choice question with 4 options, correct_index 0-3)
 - match (pairs to connect left/right)
 - true_false (statement with is_true boolean)
-- fill_blank (sentence with ___ placeholder, correct_word, blank_index)
+- fill_blank (sentence with ___ placeholder, correct_word, blank_index, full_sentence_native)
 - scramble (scrambled_parts array, correct_sentence)
 
 Quality check before output:
@@ -89,7 +89,8 @@ Output JSON format:
       "type": "fill_blank",
       "sentence": "sentence with ___ placeholder",
       "correct_word": "missing word",
-      "blank_index": 0
+      "blank_index": 0,
+      "full_sentence_native": "full correct sentence in native language without blanks"
     }},
     {{
       "type": "scramble",

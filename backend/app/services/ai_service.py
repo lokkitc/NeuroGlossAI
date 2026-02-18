@@ -441,6 +441,7 @@ class AIService:
                 sentence = ex.get("sentence")
                 correct = ex.get("correct_word")
                 blank_index = ex.get("blank_index")
+                full_sentence_native = ex.get("full_sentence_native")
                 
                 if not isinstance(sentence, str):
                     errors.append(
@@ -485,13 +486,25 @@ class AIService:
                         }
                     )
                 
-                if not isinstance(blank_index, int) or blank_index < 0:
+                # Validate blank_index if present
+                if blank_index is not None and not isinstance(blank_index, int):
                     errors.append(
                         {
                             "code": "exercise_invalid",
                             "field": f"exercises[{idx}].blank_index",
                             "reason": "invalid",
                             "message": "fill_blank has invalid 'blank_index'",
+                        }
+                    )
+                
+                # Validate full_sentence_native if present (optional field)
+                if full_sentence_native is not None and not isinstance(full_sentence_native, str):
+                    errors.append(
+                        {
+                            "code": "exercise_invalid",
+                            "field": f"exercises[{idx}].full_sentence_native",
+                            "reason": "invalid",
+                            "message": "fill_blank has invalid 'full_sentence_native'",
                         }
                     )
 

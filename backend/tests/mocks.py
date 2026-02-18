@@ -81,12 +81,14 @@ class MockLLMProvider(LLMProvider):
                     {
                         "type": "fill_blank",
                         "sentence": "Мақсат — қарсыластың ___ бұзу",
-                        "correct_word": "базасын"
+                        "correct_word": "базасын",
+                        "full_sentence_native": "Цель — разрушить базу противника"
                     },
                     {
                         "type": "fill_blank",
                         "sentence": "Мен ___ таңдаймын",
-                        "correct_word": "батырды"
+                        "correct_word": "батырды",
+                        "full_sentence_native": "Я выбираю героя"
                     },
                     {
                         "type": "scramble",
