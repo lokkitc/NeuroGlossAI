@@ -23,8 +23,15 @@ from app.core.ai.groq_provider import GroqProvider
 from app.repositories.ai_ops import AIIOpsRepository
 from app.utils.prompt_templates import (
     LESSON_SYSTEM_TEMPLATE,
+    LESSON_TEXT_ONLY_TEMPLATE,
+    VOCAB_FROM_TEXT_TEMPLATE,
     LESSON_TEXT_VOCAB_TEMPLATE,
     LESSON_EXERCISES_TEMPLATE,
+    VOCAB_EXERCISES_TEMPLATE,
+    TEXT_EXERCISES_TEMPLATE,
+    LESSON_PLAN_TEMPLATE,
+    LESSON_REVIEW_TEMPLATE,
+    EXERCISES_REVIEW_TEMPLATE,
     ROLEPLAY_SYSTEM_TEMPLATE,
     PATH_GENERATION_TEMPLATE,
 )
@@ -94,6 +101,15 @@ class AIService:
     def _compute_prompt_hash(prompt: str, *, provider: str | None, model: str | None) -> str:
         payload = f"{provider or ''}|{model or ''}|{prompt}".encode("utf-8", errors="ignore")
         return hashlib.sha256(payload).hexdigest()
+
+    @staticmethod
+    def _truncate_prompt(prompt: str) -> str:
+        max_chars = int(getattr(settings, "AI_MAX_PROMPT_CHARS", 20000) or 20000)
+        if not isinstance(prompt, str):
+            prompt = str(prompt)
+        if max_chars > 0 and len(prompt) > max_chars:
+            return prompt[:max_chars]
+        return prompt
 
     @staticmethod
     def _is_garbage_text(text: str) -> bool:
@@ -554,6 +570,136 @@ class AIService:
 
         return errors
 
+    @staticmethod
+    def _vocab_words_from_list(vocabulary: list[dict] | None) -> set[str]:
+        words: set[str] = set()
+        for it in vocabulary or []:
+            if not isinstance(it, dict):
+                continue
+            w = it.get("word")
+            if isinstance(w, str) and w.strip():
+                words.add(w.strip())
+        return words
+
+    def _validate_exercise_traceability(
+        self,
+        exercises: list[dict] | None,
+        *,
+        vocab_words: set[str],
+    ) -> list[dict]:
+        errs: list[dict] = []
+        if not exercises:
+            return errs
+
+        for idx, ex in enumerate(exercises):
+            if not isinstance(ex, dict):
+                continue
+
+            ex_type = ex.get("type")
+            if not isinstance(ex_type, str) or not ex_type.strip():
+                continue
+
+            # Enforce source by exercise type.
+            expected_source = "vocab" if ex_type in {"quiz", "match"} else "text"
+
+            src = ex.get("source")
+            if not isinstance(src, str) or not src.strip():
+                errs.append(
+                    {
+                        "code": "exercise_trace_missing",
+                        "field": f"exercises[{idx}].source",
+                        "reason": "missing",
+                        "message": "Exercise missing source traceability field",
+                    }
+                )
+            elif src != expected_source:
+                errs.append(
+                    {
+                        "code": "exercise_trace_invalid",
+                        "field": f"exercises[{idx}].source",
+                        "reason": "wrong_source",
+                        "message": f"Exercise source must be '{expected_source}'",
+                    }
+                )
+
+            targets = ex.get("targets")
+            if not isinstance(targets, list) or not targets:
+                errs.append(
+                    {
+                        "code": "exercise_trace_missing",
+                        "field": f"exercises[{idx}].targets",
+                        "reason": "missing",
+                        "message": "Exercise missing targets traceability field",
+                    }
+                )
+                continue
+
+            for j, t in enumerate(targets):
+                if not isinstance(t, str) or not t.strip():
+                    errs.append(
+                        {
+                            "code": "exercise_trace_invalid",
+                            "field": f"exercises[{idx}].targets[{j}]",
+                            "reason": "invalid",
+                            "message": "Target must be a non-empty string",
+                        }
+                    )
+                    continue
+                if t.strip() not in vocab_words:
+                    errs.append(
+                        {
+                            "code": "exercise_trace_invalid",
+                            "field": f"exercises[{idx}].targets[{j}]",
+                            "reason": "not_in_vocab",
+                            "message": "Target is not present in lesson vocabulary",
+                        }
+                    )
+
+        return errs
+
+    def _validate_sentence_source(
+        self,
+        exercises: list[dict] | None,
+        *,
+        lesson_text: str,
+    ) -> list[dict]:
+        errors: list[dict] = []
+        if not exercises or not isinstance(lesson_text, str) or not lesson_text.strip():
+            return errors
+
+        text = lesson_text
+        for idx, ex in enumerate(exercises):
+            if not isinstance(ex, dict):
+                continue
+            ex_type = ex.get("type")
+            if ex_type not in {"true_false", "fill_blank", "scramble"}:
+                continue
+
+            ss = ex.get("sentence_source")
+            if not isinstance(ss, str) or not ss.strip():
+                errors.append(
+                    {
+                        "code": "exercise_sentence_source_missing",
+                        "field": f"exercises[{idx}].sentence_source",
+                        "reason": "missing",
+                        "message": "Text-based exercise missing sentence_source",
+                    }
+                )
+                continue
+
+            # Должен быть точный подстрокой в оригинальном тексте
+            if ss not in text:
+                errors.append(
+                    {
+                        "code": "exercise_sentence_source_invalid",
+                        "field": f"exercises[{idx}].sentence_source",
+                        "reason": "not_in_text",
+                        "message": "sentence_source must be an exact substring of the lesson text",
+                    }
+                )
+
+        return errors
+
     def _collect_text_and_vocab_errors(self, data: dict, *, target_language: str, native_language: str) -> list[dict]:
         if not isinstance(data, dict):
             return [
@@ -660,6 +806,7 @@ class AIService:
         errors: list[str],
         instruction: str,
         db: AsyncSession | None = None,
+        strict_multistep: bool = False,
     ) -> dict:
         payload = json.dumps(invalid_json, ensure_ascii=False)
         prompt = (
@@ -674,11 +821,13 @@ class AIService:
             + "- Keep the SAME top-level structure and keys; only edit values and add missing required fields.\n"
             + "- Do NOT add any commentary or markdown.\n"
         )
+        prompt = self._truncate_prompt(prompt)
         return await self._generate_json_with_retries(
             prompt,
             max_attempts=3,
             db=db,
             use_cache=True,
+            temperature=float(getattr(settings, "AI_TEMPERATURE_REPAIR", 0.1) or 0.1),
         )
 
     @staticmethod
@@ -701,15 +850,21 @@ class AIService:
         *,
         prior_topics: list[str] | None,
         used_words: list[str] | None,
+        opening_sentences: list[str] | None = None,
+        recent_exercise_types: list[str] | None = None,
         target_language: str,
         native_language: str,
     ) -> str:
         prior_topics = prior_topics or []
         used_words = used_words or []
+        opening_sentences = opening_sentences or []
+        recent_exercise_types = recent_exercise_types or []
 
         # Ограничиваем размер промпта.
         prior_topics = prior_topics[:30]
         used_words = used_words[:80]
+        opening_sentences = opening_sentences[:10]
+        recent_exercise_types = recent_exercise_types[:30]
 
         suffix = (
             "\n\nCOURSE MEMORY / ANTI-REPETITION RULES:\n"
@@ -726,8 +881,120 @@ class AIService:
             suffix += "- Words already used in previous lessons (avoid repeating them as vocabulary targets):\n"
             suffix += "  - " + ", ".join(used_words) + "\n"
 
+        if opening_sentences:
+            suffix += "- Recent lesson openings (avoid starting the lesson with the same first sentence/structure):\n"
+            suffix += "  - " + "\n  - ".join([s.replace("\n", " ").strip() for s in opening_sentences if str(s).strip()][:10]) + "\n"
+
+        if recent_exercise_types:
+            suffix += "- Recent exercise types used (vary the pattern, avoid repeating the exact same sequence):\n"
+            suffix += "  - " + ", ".join([str(t).strip() for t in recent_exercise_types if str(t).strip()][:30]) + "\n"
+
         suffix += "- Ensure this lesson introduces NEW vocabulary and NEW examples compared to prior lessons.\n"
         return suffix
+
+    @staticmethod
+    def _issues_to_patch_lines(issues: list[dict]) -> list[str]:
+        lines: list[str] = []
+        for it in issues or []:
+            if not isinstance(it, dict):
+                continue
+            code = it.get("code")
+            field = it.get("field")
+            why = it.get("why")
+            hint = it.get("fix_hint")
+            parts = [str(p) for p in [code, field, why, hint] if p]
+            if parts:
+                lines.append(" | ".join(parts))
+        return lines or ["unknown"]
+
+    async def _strict_plan(
+        self,
+        *,
+        topic: str,
+        target_language: str,
+        native_language: str,
+        level: str,
+        interests: str,
+        prior_topics: list[str] | None,
+        used_words: list[str] | None,
+        db: AsyncSession | None,
+    ) -> dict:
+        prompt = LESSON_PLAN_TEMPLATE.format(
+            target_language=target_language,
+            native_language=native_language,
+            level=level,
+            topic=topic,
+            interests=interests,
+            prior_topics="\n".join([f"- {t}" for t in (prior_topics or [])[:30]]) or "- none",
+            used_words=", ".join((used_words or [])[:80]) or "none",
+        )
+        return await self._generate_json_with_retries(prompt, max_attempts=4, db=db, use_cache=False)
+
+    async def _strict_review_and_fix_core(
+        self,
+        *,
+        lesson_core: dict,
+        topic: str,
+        target_language: str,
+        native_language: str,
+        level: str,
+        db: AsyncSession | None,
+    ) -> tuple[dict, list[dict]]:
+        review_prompt = LESSON_REVIEW_TEMPLATE.format(
+            target_language=target_language,
+            native_language=native_language,
+            topic=topic,
+            level=level,
+        ) + "\n\nLESSON_JSON:\n" + json.dumps(lesson_core, ensure_ascii=False)
+        review = await self._generate_json_with_retries(review_prompt, max_attempts=3, db=db, use_cache=False)
+        issues = review.get("issues") if isinstance(review, dict) else None
+        issues_list: list[dict] = list(issues) if isinstance(issues, list) else []
+        if not issues_list:
+            return lesson_core, []
+
+        fixed = await self._fix_json_with_patch(
+            invalid_json=lesson_core,
+            errors=self._issues_to_patch_lines(issues_list),
+            instruction=(
+                f"You previously generated lesson JSON for {target_language}/{native_language} but it needs improvements. "
+                f"Fix the SAME JSON." 
+            ),
+            db=db,
+        )
+        return fixed, issues_list
+
+    async def _strict_review_and_fix_exercises(
+        self,
+        *,
+        exercises_container: dict,
+        target_language: str,
+        native_language: str,
+        text: str,
+        vocab_pairs: str,
+        db: AsyncSession | None,
+    ) -> tuple[dict, list[dict]]:
+        review_prompt = EXERCISES_REVIEW_TEMPLATE.format(
+            target_language=target_language,
+            native_language=native_language,
+        )
+        review_prompt += "\n\nTEXT:\n" + str(text or "")
+        review_prompt += "\n\nVOCAB_PAIRS:\n" + str(vocab_pairs or "")
+        review_prompt += "\n\nEXERCISES_JSON:\n" + json.dumps(exercises_container, ensure_ascii=False)
+        review = await self._generate_json_with_retries(review_prompt, max_attempts=3, db=db, use_cache=False)
+        issues = review.get("issues") if isinstance(review, dict) else None
+        issues_list: list[dict] = list(issues) if isinstance(issues, list) else []
+        if not issues_list:
+            return exercises_container, []
+
+        fixed = await self._fix_json_with_patch(
+            invalid_json=exercises_container,
+            errors=self._issues_to_patch_lines(issues_list),
+            instruction=(
+                f"You previously generated ONLY exercises JSON for a {target_language} lesson. Fix ONLY the exercises JSON." 
+            ),
+            db=db,
+        )
+        return fixed, issues_list
 
     @staticmethod
     def _extract_retry_after_seconds(error_message: str) -> float | None:
@@ -753,8 +1020,10 @@ class AIService:
         max_attempts: int = 5,
         db: AsyncSession | None = None,
         use_cache: bool = True,
+        temperature: float | None = None,
     ) -> dict:
         last_exc: Exception | None = None
+        prompt = self._truncate_prompt(prompt)
         candidates = self._provider_candidates()
 
         for candidate in candidates:
@@ -777,7 +1046,7 @@ class AIService:
 
             for attempt in range(1, max_attempts + 1):
                 try:
-                    result = await candidate.generate_json(prompt)
+                    result = await candidate.generate_json(prompt, temperature=temperature)
                     self._record_circuit_success(candidate)
 
                     if use_cache and db is not None and prompt_hash is not None and isinstance(result, dict):
@@ -863,6 +1132,8 @@ class AIService:
         interests: list[str] = None,
         prior_topics: list[str] | None = None,
         used_words: list[str] | None = None,
+        opening_sentences: list[str] | None = None,
+        recent_exercise_types: list[str] | None = None,
         generation_mode: GenerationMode = "balanced",
         db: AsyncSession | None = None,
     ) -> dict:
@@ -876,17 +1147,37 @@ class AIService:
         provider_name = type(self.provider).__name__ if getattr(self, "provider", None) else None
         model_name = getattr(self.provider, "model", None) if getattr(self, "provider", None) else None
 
-        lesson_core = await self.generate_text_vocab_only(
-            topic=topic,
-            target_language=target_language,
-            native_language=native_language,
-            level=level,
-            interests=interests,
-            prior_topics=prior_topics,
-            used_words=used_words,
-            generation_mode=mode,
-            db=db,
-        )
+        # Strict: use multi-step pipeline (text -> vocab extract) to stabilize quality.
+        if mode == "strict":
+            lesson_core = await self.generate_text_vocab_only(
+                topic=topic,
+                target_language=target_language,
+                native_language=native_language,
+                level=level,
+                interests=interests,
+                prior_topics=prior_topics,
+                used_words=used_words,
+                opening_sentences=opening_sentences,
+                recent_exercise_types=recent_exercise_types,
+                generation_mode=mode,
+                db=db,
+                strict_multistep=True,
+            )
+        else:
+            lesson_core = await self.generate_text_vocab_only(
+                topic=topic,
+                target_language=target_language,
+                native_language=native_language,
+                level=level,
+                interests=interests,
+                prior_topics=prior_topics,
+                used_words=used_words,
+                opening_sentences=opening_sentences,
+                recent_exercise_types=recent_exercise_types,
+                generation_mode=mode,
+                db=db,
+                strict_multistep=False,
+            )
 
         meta_core = lesson_core.get("_meta") if isinstance(lesson_core, dict) else None
         validation_errors: list[dict] = (
@@ -900,19 +1191,41 @@ class AIService:
             f"- {str(it.get('word','')).strip()} -> {str(it.get('translation','')).strip()}" for it in vocab_list if isinstance(it, dict)
         )
 
-        # Шаг B: генерируем упражнения на основе основы урока
-        prompt_ex = LESSON_EXERCISES_TEMPLATE.format(
-            target_language=target_language,
-            native_language=native_language,
-            text=text,
-            vocab_pairs=vocab_pairs,
-        )
-        exercises_container = await self._generate_json_with_retries(
-            prompt_ex,
-            max_attempts=max_ai_attempts,
-            db=db,
-            use_cache=True,
-        )
+        exercises_container: dict
+        vocab_words = self._vocab_words_from_list(vocab_list)
+
+        if mode == "strict":
+            # Split generation to reduce cognitive load
+            ex_vocab = await self.generate_exercises_vocab_only(
+                vocabulary=vocab_list,
+                target_language=target_language,
+                native_language=native_language,
+                db=db,
+            )
+            ex_text = await self.generate_exercises_text_only(
+                text=text,
+                vocabulary=vocab_list,
+                target_language=target_language,
+                native_language=native_language,
+                db=db,
+            )
+            exercises_container = {
+                "exercises": list(ex_vocab.get("exercises") or []) + list(ex_text.get("exercises") or [])
+            }
+        else:
+            # Single-call generation
+            prompt_ex = LESSON_EXERCISES_TEMPLATE.format(
+                target_language=target_language,
+                native_language=native_language,
+                text=text,
+                vocab_pairs=vocab_pairs,
+            )
+            exercises_container = await self._generate_json_with_retries(
+                prompt_ex,
+                max_attempts=max_ai_attempts,
+                db=db,
+                use_cache=True,
+            )
 
         exercises_attempts = 0
         quality_status = "ok"
@@ -938,6 +1251,68 @@ class AIService:
                 db=db,
             )
 
+        # Строгий режим: обязательность traceability для разделенных упражнений
+        if mode == "strict" and isinstance(exercises_container, dict):
+            exercises = exercises_container.get("exercises") if isinstance(exercises_container, dict) else None
+            trace_errs = self._validate_exercise_traceability(exercises, vocab_words=vocab_words)
+            if trace_errs:
+                validation_errors.extend(trace_errs)
+
+                exercises_container = await self._fix_json_with_patch(
+                    invalid_json=exercises_container,
+                    errors=self._errors_to_patch_lines(trace_errs),
+                    instruction=(
+                        f"You previously generated ONLY exercises JSON for a {target_language} lesson. "
+                        f"Add/repair traceability fields: source (must match exercise type: quiz/match=vocab, others=text) "
+                        f"and targets (each must be from the lesson vocabulary)."
+                    ),
+                    db=db,
+                )
+
+            # Строгий режим: обязательность sentence_source для разделенных упражнений
+            exercises = exercises_container.get("exercises") if isinstance(exercises_container, dict) else None
+            ss_errs = self._validate_sentence_source(exercises, lesson_text=text)
+            if ss_errs:
+                validation_errors.extend(ss_errs)
+                exercises_container = await self._fix_json_with_patch(
+                    invalid_json=exercises_container,
+                    errors=self._errors_to_patch_lines(ss_errs),
+                    instruction=(
+                        f"You previously generated ONLY exercises JSON for a {target_language} lesson. "
+                        f"For every text-based exercise (true_false/fill_blank/scramble) set sentence_source to an EXACT substring from the provided lesson text."
+                    ),
+                    db=db,
+                )
+
+        # Строгий режим: дополнительный QA-проверка упражнений отдельно от урока, затем применение целевого патча.
+        if mode == "strict" and isinstance(exercises_container, dict):
+            try:
+                reviewed_ex, ex_issues = await self._strict_review_and_fix_exercises(
+                    exercises_container=exercises_container,
+                    target_language=target_language,
+                    native_language=native_language,
+                    text=text,
+                    vocab_pairs=vocab_pairs,
+                    db=db,
+                )
+                if isinstance(reviewed_ex, dict):
+                    exercises_container = reviewed_ex
+                if ex_issues:
+                    validation_errors.extend(
+                        [
+                            {
+                                "code": (it.get("code") or "exercise_review_issue"),
+                                "field": (it.get("field") or "exercises"),
+                                "reason": "review",
+                                "message": (it.get("why") or ""),
+                            }
+                            for it in (ex_issues or [])
+                            if isinstance(it, dict)
+                        ]
+                    )
+            except Exception:
+                pass
+
         if self._validate_exercises(
             exercises_container.get("exercises") if isinstance(exercises_container, dict) else None,
             target_language=target_language,
@@ -960,7 +1335,146 @@ class AIService:
                 "quality_status": quality_status,
             },
         }
+
+        # Адаптивная деградация: если качество в "balanced" режиме плохое, то retry once in strict mode.
+        if mode == "balanced":
+            too_many_errors = len(validation_errors) >= 6
+            if quality_status == "needs_review" or too_many_errors:
+                try:
+                    strict_out = await self.generate_lesson(
+                        topic=topic,
+                        target_language=target_language,
+                        native_language=native_language,
+                        level=level,
+                        interests=interests,
+                        prior_topics=prior_topics,
+                        used_words=used_words,
+                        opening_sentences=opening_sentences,
+                        recent_exercise_types=recent_exercise_types,
+                        generation_mode="strict",
+                        db=db,
+                    )
+                    return strict_out
+                except Exception:
+                    return out
+
         return out
+
+    async def generate_text_only(
+        self,
+        *,
+        topic: str,
+        target_language: str,
+        native_language: str,
+        level: str,
+        interests: str,
+        prior_topics: list[str] | None,
+        used_words: list[str] | None,
+        opening_sentences: list[str] | None,
+        recent_exercise_types: list[str] | None,
+        db: AsyncSession | None,
+    ) -> dict:
+        base_suffix = self._build_course_context_suffix(
+            prior_topics=prior_topics,
+            used_words=used_words,
+            opening_sentences=opening_sentences,
+            recent_exercise_types=recent_exercise_types,
+            target_language=target_language,
+            native_language=native_language,
+        )
+        prompt = LESSON_TEXT_ONLY_TEMPLATE.format(
+            target_language=target_language,
+            native_language=native_language,
+            topic=topic,
+            level=level,
+            interests=interests,
+        ) + base_suffix
+        return await self._generate_json_with_retries(
+            prompt,
+            max_attempts=6,
+            db=db,
+            use_cache=True,
+            temperature=float(getattr(settings, "AI_TEMPERATURE_TEXT", 0.6) or 0.6),
+        )
+
+    async def extract_vocab_from_text(
+        self,
+        *,
+        text: str,
+        target_language: str,
+        native_language: str,
+        level: str,
+        db: AsyncSession | None,
+    ) -> dict:
+        prompt = VOCAB_FROM_TEXT_TEMPLATE.format(
+            target_language=target_language,
+            native_language=native_language,
+            level=level,
+            text=str(text or ""),
+        )
+        return await self._generate_json_with_retries(
+            prompt,
+            max_attempts=6,
+            db=db,
+            use_cache=True,
+            temperature=float(getattr(settings, "AI_TEMPERATURE_JSON", 0.2) or 0.2),
+        )
+
+    async def generate_exercises_vocab_only(
+        self,
+        *,
+        vocabulary: list[dict],
+        target_language: str,
+        native_language: str,
+        db: AsyncSession | None,
+    ) -> dict:
+        vocab_pairs = "\n".join(
+            f"- {str(it.get('word','')).strip()} -> {str(it.get('translation','')).strip()}"
+            for it in (vocabulary or [])
+            if isinstance(it, dict)
+        )
+        prompt = VOCAB_EXERCISES_TEMPLATE.format(
+            target_language=target_language,
+            native_language=native_language,
+            vocab_pairs=vocab_pairs,
+        )
+        prompt = self._truncate_prompt(prompt)
+        return await self._generate_json_with_retries(
+            prompt,
+            max_attempts=6,
+            db=db,
+            use_cache=True,
+            temperature=float(getattr(settings, "AI_TEMPERATURE_JSON", 0.2) or 0.2),
+        )
+
+    async def generate_exercises_text_only(
+        self,
+        *,
+        text: str,
+        vocabulary: list[dict],
+        target_language: str,
+        native_language: str,
+        db: AsyncSession | None,
+    ) -> dict:
+        vocab_pairs = "\n".join(
+            f"- {str(it.get('word','')).strip()} -> {str(it.get('translation','')).strip()}"
+            for it in (vocabulary or [])
+            if isinstance(it, dict)
+        )
+        prompt = TEXT_EXERCISES_TEMPLATE.format(
+            target_language=target_language,
+            native_language=native_language,
+            text=str(text or ""),
+            vocab_pairs=vocab_pairs,
+        )
+        prompt = self._truncate_prompt(prompt)
+        return await self._generate_json_with_retries(
+            prompt,
+            max_attempts=6,
+            db=db,
+            use_cache=True,
+            temperature=float(getattr(settings, "AI_TEMPERATURE_JSON", 0.2) or 0.2),
+        )
 
     async def generate_text_vocab_only(
         self,
@@ -972,8 +1486,11 @@ class AIService:
         interests: list[str] | None = None,
         prior_topics: list[str] | None = None,
         used_words: list[str] | None = None,
+        opening_sentences: list[str] | None = None,
+        recent_exercise_types: list[str] | None = None,
         generation_mode: GenerationMode = "balanced",
         db: AsyncSession | None = None,
+        strict_multistep: bool = False,
     ) -> dict:
         if not settings.AI_ENABLED:
             raise ServiceException("AI is disabled")
@@ -990,9 +1507,27 @@ class AIService:
         base_suffix = self._build_course_context_suffix(
             prior_topics=prior_topics,
             used_words=used_words,
+            opening_sentences=opening_sentences,
+            recent_exercise_types=recent_exercise_types,
             target_language=target_language,
             native_language=native_language,
         )
+
+        plan_payload = None
+        if mode == "strict":
+            try:
+                plan_payload = await self._strict_plan(
+                    topic=topic,
+                    target_language=target_language,
+                    native_language=native_language,
+                    level=level,
+                    interests=interests_str,
+                    prior_topics=prior_topics,
+                    used_words=used_words,
+                    db=db,
+                )
+            except Exception:
+                plan_payload = None
 
         prompt_text_vocab = LESSON_TEXT_VOCAB_TEMPLATE.format(
             target_language=target_language,
@@ -1002,12 +1537,42 @@ class AIService:
             interests=interests_str,
         ) + base_suffix
 
-        lesson_core = await self._generate_json_with_retries(
-            prompt_text_vocab,
-            max_attempts=max_ai_attempts,
-            db=db,
-            use_cache=True,
-        )
+        if isinstance(plan_payload, dict) and plan_payload:
+            prompt_text_vocab += "\n\nLESSON_PLAN_JSON (follow this plan):\n" + json.dumps(plan_payload, ensure_ascii=False)
+
+        # Строгий мультишаговый режим: генерация текста и выделение лексики
+        if mode == "strict" and strict_multistep:
+            text_payload = await self.generate_text_only(
+                topic=topic,
+                target_language=target_language,
+                native_language=native_language,
+                level=level,
+                interests=interests_str,
+                prior_topics=prior_topics,
+                used_words=used_words,
+                opening_sentences=opening_sentences,
+                recent_exercise_types=recent_exercise_types,
+                db=db,
+            )
+            text_val = str(text_payload.get("text") or "") if isinstance(text_payload, dict) else ""
+            vocab_payload = await self.extract_vocab_from_text(
+                text=text_val,
+                target_language=target_language,
+                native_language=native_language,
+                level=level,
+                db=db,
+            )
+            lesson_core = {
+                "text": text_val,
+                "vocabulary": (vocab_payload.get("vocabulary") if isinstance(vocab_payload, dict) else []) or [],
+            }
+        else:
+            lesson_core = await self._generate_json_with_retries(
+                prompt_text_vocab,
+                max_attempts=max_ai_attempts,
+                db=db,
+                use_cache=True,
+            )
         validation_errors: list[dict] = []
         repair_count = 0
 
@@ -1042,6 +1607,35 @@ class AIService:
         if core_final_errs:
             validation_errors.extend(core_final_errs)
             raise ServiceException("AI lesson core failed validation")
+
+        if mode == "strict":
+            try:
+                reviewed, review_issues = await self._strict_review_and_fix_core(
+                    lesson_core=lesson_core,
+                    topic=topic,
+                    target_language=target_language,
+                    native_language=native_language,
+                    level=level,
+                    db=db,
+                )
+                if isinstance(reviewed, dict):
+                    lesson_core = reviewed
+                    if review_issues:
+                        validation_errors.extend(
+                            [
+                                {
+                                    "code": (it.get("code") or "review_issue"),
+                                    "field": (it.get("field") or "review"),
+                                    "reason": "review",
+                                    "message": (it.get("why") or ""),
+                                }
+                                for it in (review_issues or [])
+                                if isinstance(it, dict)
+                            ]
+                        )
+                        repair_count += 1
+            except Exception:
+                pass
 
         return {
             "text": str(lesson_core.get("text") or "") if isinstance(lesson_core, dict) else "",
@@ -1159,6 +1753,7 @@ class AIService:
             theme=theme_str,
             interests=interests,
         )
+        prompt = self._truncate_prompt(prompt)
 
         try:
             return await self._generate_json_with_retries(prompt, db=db, use_cache=True)
@@ -1183,15 +1778,15 @@ class AIService:
             scenario=scenario, role=role, level=level, target_language=target_language
         )
         
-        messages = [{"role": "system", "content": system_instruction}]
+        messages = [{"role": "system", "content": self._truncate_prompt(system_instruction)}]
         for msg in history[-5:]:
              # Маппим роль 'бот' в 'ассистент' для совместимого формата сообщений
              role_name = "assistant" if msg['role'] == "bot" else "user"
-             messages.append({"role": role_name, "content": msg['content']})
+             messages.append({"role": role_name, "content": self._truncate_prompt(msg['content'])})
 
         try:
             return await self.provider.generate_chat(messages)
         except Exception as e:
-            return f"AI Error: {str(e)}"
+            raise ServiceException(f"AI provider error: {str(e)}")
 
 ai_service = AIService()

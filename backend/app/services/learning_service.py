@@ -93,6 +93,30 @@ class LearningService:
         ai_data = None
         err: Exception | None = None
         try:
+            # Получаем последние 10 уроков для текущего курса
+            recent_lessons = await self.generated_repo.get_by_enrollment(enrollment.id, skip=0, limit=10)
+            opening_sentences: list[str] = []
+            recent_exercise_types: list[str] = []
+            for gl in recent_lessons or []:
+                txt = getattr(gl, "content_text", None)
+                if isinstance(txt, str) and txt.strip():
+                    s = txt.strip()
+                    cut = None
+                    for sep in [".", "!", "?"]:
+                        pos = s.find(sep)
+                        if pos != -1:
+                            cut = pos + 1
+                            break
+                    first = s[:cut].strip() if cut else s.split("\n", 1)[0].strip()
+                    if first:
+                        opening_sentences.append(first)
+
+                ex = getattr(gl, "exercises", None)
+                if isinstance(ex, list):
+                    for it in ex:
+                        if isinstance(it, dict) and isinstance(it.get("type"), str) and it.get("type"):
+                            recent_exercise_types.append(str(it.get("type")))
+
             ai_data = await ai_service.generate_lesson(
                 topic=topic,
                 target_language=user.target_language,
@@ -101,6 +125,8 @@ class LearningService:
                 interests=user.interests if hasattr(user, "interests") else [],
                 prior_topics=prior_topics,
                 used_words=used_words,
+                opening_sentences=opening_sentences[:10],
+                recent_exercise_types=recent_exercise_types[:30],
                 generation_mode=generation_mode,
                 db=self.db,
             )
