@@ -3,6 +3,56 @@
 LESSON_SYSTEM_TEMPLATE = """You are an expert language teacher creating content for language learners.
 Generate content that is educational, engaging, and appropriate for the specified level."""
 
+LESSON_TEXT_ONLY_TEMPLATE = """Generate ONLY a language lesson text for {target_language} learners.
+
+Topic: {topic}
+Level: {level}
+Native language: {native_language}
+Student interests: {interests}
+
+Requirements:
+1. Create a 150-200 word text in {target_language} strictly about the topic.
+2. Use only {target_language} in the text. Do not include any {native_language} or English words.
+3. Stay on-topic. Do not switch to a generic or unrelated topic.
+
+Hard rules:
+- Output must be valid JSON only. No markdown. No extra keys.
+
+Output JSON format:
+{{
+  "text": "lesson text in target language"
+}}"""
+
+
+VOCAB_FROM_TEXT_TEMPLATE = """Extract vocabulary for a {target_language} lesson text.
+
+Native language: {native_language}
+Level: {level}
+
+Text:
+{text}
+
+Requirements:
+1. Select 6-8 important words/phrases that actually appear in the text.
+2. For each vocabulary item provide:
+   - word in {target_language} (must appear verbatim in the text)
+   - translation in {native_language}
+   - context sentence in {target_language}
+
+Hard rules:
+- Output must be valid JSON only. No markdown. No extra keys.
+
+Output JSON format:
+{{
+  "vocabulary": [
+    {{
+      "word": "target language word",
+      "translation": "native language translation",
+      "context": "sentence using the word in target language"
+    }}
+  ]
+}}"""
+
 LESSON_TEXT_VOCAB_TEMPLATE = """Generate a language lesson text and vocabulary for {target_language} learners.
 
 Topic: {topic}
@@ -34,6 +84,181 @@ Output JSON format:
       "translation": "native language translation",
       "context": "sentence using the word in target language"
     }}
+  ]
+}}"""
+
+
+VOCAB_EXERCISES_TEMPLATE = """Generate ONLY vocabulary-based exercises for a {target_language} lesson.
+
+Native language: {native_language}
+
+Vocabulary pairs:
+{vocab_pairs}
+
+Rules:
+- Output must be valid JSON only. No markdown. No extra keys.
+- Every exercise MUST be solvable using ONLY the vocabulary pairs.
+- No English words.
+- Include traceability fields:
+  - source: must be "vocab"
+  - targets: list of vocabulary words used by the exercise
+
+Create exercises of these types:
+- quiz (question+options in {target_language}, correct_index)
+- match (pairs.left in {target_language}, pairs.right in {native_language})
+
+Output JSON format:
+{{
+  "exercises": [
+    {{
+      "type": "quiz",
+      "source": "vocab",
+      "targets": ["word1"],
+      "question": "...",
+      "options": ["...", "...", "...", "..."],
+      "correct_index": 0
+    }},
+    {{
+      "type": "match",
+      "source": "vocab",
+      "targets": ["word1", "word2"],
+      "pairs": [
+        {{"left": "...", "right": "..."}}
+      ]
+    }}
+  ]
+}}"""
+
+
+TEXT_EXERCISES_TEMPLATE = """Generate ONLY text-based exercises for a {target_language} lesson.
+
+Native language: {native_language}
+
+Text:
+{text}
+
+Vocabulary pairs:
+{vocab_pairs}
+
+Rules:
+- Output must be valid JSON only. No markdown. No extra keys.
+- Exercises MUST be solvable using ONLY the provided Text and Vocabulary pairs.
+- No English words.
+- Include traceability fields:
+  - source: must be "text"
+  - targets: list of vocabulary words used by the exercise
+
+Create exercises of these types:
+- true_false
+- fill_blank
+- scramble
+
+For EVERY exercise add:
+- sentence_source: an EXACT substring copied from the provided Text that the exercise is based on.
+
+Output JSON format:
+{{
+  "exercises": [
+    {{
+      "type": "true_false",
+      "source": "text",
+      "targets": ["word1"],
+      "sentence_source": "...",
+      "statement": "...",
+      "is_true": true
+    }},
+    {{
+      "type": "fill_blank",
+      "source": "text",
+      "targets": ["word1"],
+      "sentence_source": "...",
+      "sentence": "... ___ ...",
+      "correct_word": "...",
+      "blank_index": 0,
+      "full_sentence_native": "..."
+    }},
+    {{
+      "type": "scramble",
+      "source": "text",
+      "targets": ["word1"],
+      "sentence_source": "...",
+      "scrambled_parts": ["..."],
+      "correct_sentence": "..."
+    }}
+  ]
+}}"""
+
+
+LESSON_PLAN_TEMPLATE = """You are an expert language teacher.
+
+Create a SHORT plan for a {target_language} lesson. Native language is {native_language}. Level: {level}.
+Topic: {topic}
+Student interests: {interests}
+
+Hard rules:
+- Output must be valid JSON only. No markdown. No extra keys.
+- Keep plan concise.
+- Avoid repeating topics from prior lessons.
+
+Already covered topics:
+{prior_topics}
+
+Already used vocabulary (avoid using these as target words):
+{used_words}
+
+Output JSON format:
+{{
+  "topic": "...",
+  "goal": "...",
+  "key_points": ["...", "...", "..."],
+  "vocab_targets": ["...", "...", "..."],
+  "grammar_focus": "...",
+  "avoid_list": ["..."]
+}}"""
+
+
+LESSON_REVIEW_TEMPLATE = """You are a strict QA reviewer for generated language lessons.
+
+You will be given a JSON object with keys: text, vocabulary.
+Target language: {target_language}
+Native language: {native_language}
+Topic: {topic}
+Level: {level}
+
+Check for:
+- Lesson text contains non-{target_language} words.
+- Vocabulary words do not appear in the text.
+- Translation is not in {native_language}.
+- Context sentences are not in {target_language}.
+- Off-topic content.
+- Too short/too long (150-200 words target).
+
+Output must be valid JSON only.
+
+Output JSON format:
+{{
+  "issues": [
+    {{"code": "...", "field": "...", "why": "...", "fix_hint": "..."}}
+  ]
+}}"""
+
+
+EXERCISES_REVIEW_TEMPLATE = """You are a strict QA reviewer for generated lesson exercises.
+
+Target language: {target_language}
+Native language: {native_language}
+
+You will be given exercises JSON. Check:
+- Language rules per exercise type (target vs native language fields).
+- Exercises solvable using only the provided text and vocabulary pairs.
+- No English words.
+
+Output must be valid JSON only.
+
+Output JSON format:
+{{
+  "issues": [
+    {{"code": "...", "field": "...", "why": "...", "fix_hint": "..."}}
   ]
 }}"""
 
