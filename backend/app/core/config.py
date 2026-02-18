@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30 # 30 дней
     ALGORITHM: str = "HS256"
+
+    # Sensitive endpoints
+    ENABLE_USER_EXPORT: bool = False
     
     # ИИ
     AI_ENABLED: bool = True
@@ -69,6 +72,10 @@ if settings.ENV != "production":
     settings.DEBUG = bool(settings.DEBUG)
 else:
     settings.DEBUG = False
+
+# In non-production, enable export endpoint by default unless explicitly disabled
+if settings.ENV != "production" and settings.ENABLE_USER_EXPORT is False:
+    settings.ENABLE_USER_EXPORT = True
 
 # Защита от небезопасного CORS в production
 if settings.ENV == "production" and any(origin.strip() == "*" for origin in settings.BACKEND_CORS_ORIGINS):

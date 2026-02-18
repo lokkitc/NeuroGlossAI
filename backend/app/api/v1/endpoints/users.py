@@ -8,12 +8,15 @@
 """
 
 from typing import Any
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select
 from sqlalchemy.orm import selectinload
 from app.api import deps
+from app.core.config import settings
+from app.core.rate_limit import limiter
+from app.core.exceptions import NeuroGlossException
 from app.schemas.user import UserResponse, UserUpdateLanguages, UserUpdate
 from app.models.user import User
 from app.models.streak import Streak
@@ -42,11 +45,16 @@ async def update_languages(
 
 
 @router.get("/me/export")
+@limiter.limit("2/minute")
 async def export_user_data(
+    request: Request,
     current_user: User = Depends(deps.get_current_user),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     """Полный экспорт данных пользователя одним объектом (для отладки и бэкапа)."""
+
+    if not settings.ENABLE_USER_EXPORT:
+        raise NeuroGlossException(status_code=404, detail="Not Found")
 
     streaks_result = await db.execute(select(Streak).where(Streak.user_id == current_user.id))
     streaks = streaks_result.scalars().all()
