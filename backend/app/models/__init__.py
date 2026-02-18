@@ -8,3 +8,4 @@ from app.models.generated_content import GeneratedLesson, GeneratedVocabularyIte
 from app.models.srs import Lexeme, UserLexeme, LessonLexeme
 from app.models.attempts import UserLevelAttempt
 from app.models.ai_ops import LLMCacheEntry, AIGenerationEvent
+from app.models.refresh_token import RefreshToken
