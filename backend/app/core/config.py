@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     
     # Безопасность
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30 # 30 дней
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     ALGORITHM: str = "HS256"
 
     # Sensitive endpoints
@@ -30,6 +31,14 @@ class Settings(BaseSettings):
     GROQ_FALLBACK_MODELS: List[str] = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]
     AI_CIRCUIT_BREAKER_FAIL_THRESHOLD: int = 3
     AI_CIRCUIT_BREAKER_OPEN_SECONDS: int = 60
+
+    AI_REQUEST_TIMEOUT_SECONDS: int = 30
+    AI_MAX_PROMPT_CHARS: int = 20000
+    AI_MAX_RESPONSE_CHARS: int = 200000
+
+    AI_TEMPERATURE_TEXT: float = 0.6
+    AI_TEMPERATURE_JSON: float = 0.2
+    AI_TEMPERATURE_REPAIR: float = 0.1
     
     # Устаревшее
     GEMINI_API_KEY: str = ""
