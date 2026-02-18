@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any, Optional
 import uuid
 import logging
+import re
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -32,6 +33,15 @@ from app.services.ai_service import ai_service
 from app.core.events.base import event_bus, LevelCompletedEvent
 
 logger = logging.getLogger(__name__)
+
+
+_slug_safe_re = re.compile(r"[^a-z0-9]+")
+
+
+def _slugify(value: str) -> str:
+    value = (value or "").strip().lower()
+    value = _slug_safe_re.sub("_", value).strip("_")
+    return value or "course"
 
 
 class CourseService:
@@ -134,6 +144,8 @@ class CourseService:
         sections_data = ai_data.get("sections", [])
 
         course = CourseTemplate(
+            slug=_slugify(f"{user.id}_{user.target_language}_{level}_{theme_str}"),
+            created_by_user_id=user.id,
             target_language=user.target_language,
             theme=theme_str,
             cefr_level=level,
