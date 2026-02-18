@@ -18,8 +18,8 @@ from app.schemas.user import UserResponse, UserUpdateLanguages, UserUpdate
 from app.models.user import User
 from app.models.streak import Streak
 from app.models.enrollment import Enrollment
-from app.models.course_template import CourseTemplate, CourseSectionTemplate, CourseUnitTemplate, CourseLevelTemplate
 from app.models.progress import UserLevelProgress
+from app.models.attempts import UserLevelAttempt
 from app.models.generated_content import GeneratedLesson, GeneratedVocabularyItem
 from app.models.srs import LessonLexeme, UserLexeme
 
@@ -116,7 +116,6 @@ async def reset_progress(
     enrollments = await db.execute(select(Enrollment).where(Enrollment.user_id == current_user.id))
     enrollments = enrollments.scalars().all()
     enrollment_ids = [e.id for e in enrollments]
-    course_template_ids = [e.course_template_id for e in enrollments]
 
     if enrollment_ids:
         # Словарь зависит от уроков
@@ -133,22 +132,13 @@ async def reset_progress(
         # Удаляем привязки слов пользователя к записям курса, иначе FK не даст удалить enrollment.
         await db.execute(delete(UserLexeme).where(UserLexeme.enrollment_id.in_(enrollment_ids)))
 
+        # Удаляем попытки прохождения уровней перед удалением прогресса (FK constraint)
+        await db.execute(delete(UserLevelAttempt).where(UserLevelAttempt.enrollment_id.in_(enrollment_ids)))
         await db.execute(delete(UserLevelProgress).where(UserLevelProgress.enrollment_id.in_(enrollment_ids)))
         await db.execute(delete(Enrollment).where(Enrollment.id.in_(enrollment_ids)))
 
-    # Шаблоны, созданные специально для пользователя, тоже можно удалить (по возможности)
-    if course_template_ids:
-        # Удаляем снизу вверх
-        await db.execute(delete(CourseLevelTemplate).where(CourseLevelTemplate.unit_template_id.in_(
-            select(CourseUnitTemplate.id).where(CourseUnitTemplate.section_template_id.in_(
-                select(CourseSectionTemplate.id).where(CourseSectionTemplate.course_template_id.in_(course_template_ids))
-            ))
-        )))
-        await db.execute(delete(CourseUnitTemplate).where(CourseUnitTemplate.section_template_id.in_(
-            select(CourseSectionTemplate.id).where(CourseSectionTemplate.course_template_id.in_(course_template_ids))
-        )))
-        await db.execute(delete(CourseSectionTemplate).where(CourseSectionTemplate.course_template_id.in_(course_template_ids)))
-        await db.execute(delete(CourseTemplate).where(CourseTemplate.id.in_(course_template_ids)))
+    # Важно: не удаляем CourseTemplate'ы в reset.
+    # Это снижает риск удаления данных, на которые могут ссылаться другие записи (или будущие переиспользуемые шаблоны).
 
     # Сбрасываем карту уровней языка (так как контент удалён), но сохраняем опыт
     current_user.language_levels = {} 
