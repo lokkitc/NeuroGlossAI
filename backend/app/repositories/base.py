@@ -23,8 +23,11 @@ class BaseRepository(Generic[ModelType]):
     async def create(self, obj_in: ModelType, commit: bool = True) -> ModelType:
         self.db.add(obj_in)
         if commit:
-            await self.db.commit()
-            await self.db.refresh(obj_in)
+            if self.db.in_transaction():
+                await self.db.flush()
+            else:
+                await self.db.commit()
+                await self.db.refresh(obj_in)
         else:
             await self.db.flush()
         return obj_in
@@ -42,8 +45,11 @@ class BaseRepository(Generic[ModelType]):
                 
         self.db.add(db_obj)
         if commit:
-            await self.db.commit()
-            await self.db.refresh(db_obj)
+            if self.db.in_transaction():
+                await self.db.flush()
+            else:
+                await self.db.commit()
+                await self.db.refresh(db_obj)
         else:
             await self.db.flush()
         return db_obj
@@ -53,5 +59,8 @@ class BaseRepository(Generic[ModelType]):
         if obj:
             await self.db.delete(obj)
             if commit:
-                await self.db.commit()
+                if self.db.in_transaction():
+                    await self.db.flush()
+                else:
+                    await self.db.commit()
         return obj
