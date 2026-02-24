@@ -21,6 +21,7 @@ from app.core.config import settings
 from app.core.ai.base import LLMProvider
 from app.core.ai.groq_provider import GroqProvider
 from app.repositories.ai_ops import AIIOpsRepository
+from app.services.topic_retrieval_service import TopicRetrievalService
 from app.utils.prompt_templates import (
     LESSON_SYSTEM_TEMPLATE,
     LESSON_TEXT_ONLY_TEMPLATE,
@@ -44,8 +45,161 @@ GenerationMode = Literal["fast", "balanced", "strict"]
 
 
 class AIService:
-    def __init__(self, provider: LLMProvider = None):
-        self.provider = provider or GroqProvider()
+    def __init__(self, db: AsyncSession | None = None, provider: LLMProvider | None = None):
+        self.provider = provider or self._select_provider()
+        self.topic_retrieval = TopicRetrievalService()
+        self.db = db
+
+    @staticmethod
+    def _provider_info(provider: LLMProvider) -> tuple[str | None, str | None]:
+        provider_name = type(provider).__name__ if provider else None
+        model_name = getattr(provider, "model", None) if provider else None
+        return provider_name, (str(model_name) if model_name is not None else None)
+
+    async def _log_chat_event(
+        self,
+        *,
+        db: AsyncSession | None,
+        operation: str,
+        latency_ms: int | None,
+        error_codes: list[str] | None = None,
+        quality_status: str | None = None,
+        generation_mode: str | None = None,
+    ) -> None:
+        if db is None:
+            return
+        try:
+            repo = AIIOpsRepository(db)
+            provider_name, model_name = self._provider_info(self.provider)
+            await repo.create_event(
+                enrollment_id=None,
+                generated_lesson_id=None,
+                operation=operation,
+                provider=provider_name,
+                model=model_name,
+                generation_mode=generation_mode,
+                latency_ms=latency_ms,
+                repair_count=None,
+                quality_status=quality_status,
+                error_codes=error_codes,
+            )
+        except Exception:
+            # Best-effort logging only.
+            return
+
+    async def generate_character_chat_turn(
+        self,
+        *,
+        db: AsyncSession | None,
+        messages: list[dict[str, str]],
+        generation_mode: str = "deep",
+    ) -> str:
+        started = time.monotonic()
+        try:
+            text = await self.provider.generate_chat(messages)
+            latency_ms = int((time.monotonic() - started) * 1000)
+            await self._log_chat_event(
+                db=db,
+                operation="chat_turn",
+                latency_ms=latency_ms,
+                quality_status="ok",
+                generation_mode=generation_mode,
+            )
+            return text
+        except Exception as e:
+            latency_ms = int((time.monotonic() - started) * 1000)
+            await self._log_chat_event(
+                db=db,
+                operation="chat_turn",
+                latency_ms=latency_ms,
+                quality_status="error",
+                generation_mode=generation_mode,
+                error_codes=["provider_error"],
+            )
+            raise ServiceException(f"AI provider error: {str(e)}")
+
+    async def generate_chat_learning_lesson_json(
+        self,
+        *,
+        db: AsyncSession | None,
+        prompt: str,
+        generation_mode: str = "balanced",
+    ) -> dict[str, Any]:
+        started = time.monotonic()
+        try:
+            data = await self.provider.generate_json(prompt)
+            latency_ms = int((time.monotonic() - started) * 1000)
+            await self._log_chat_event(
+                db=db,
+                operation="chat_lesson",
+                latency_ms=latency_ms,
+                quality_status="ok",
+                generation_mode=generation_mode,
+            )
+            return data
+        except Exception as e:
+            latency_ms = int((time.monotonic() - started) * 1000)
+            await self._log_chat_event(
+                db=db,
+                operation="chat_lesson",
+                latency_ms=latency_ms,
+                quality_status="error",
+                generation_mode=generation_mode,
+                error_codes=["provider_error"],
+            )
+            raise ServiceException(f"AI provider error: {str(e)}")
+
+    async def generate_room_chat_turn_json(
+        self,
+        *,
+        db: AsyncSession | None,
+        messages: list[dict[str, str]],
+        generation_mode: str = "deep",
+    ) -> dict[str, Any]:
+        started = time.monotonic()
+        try:
+            # Force strict JSON to reliably extract speaker/message.
+            # We can't pass role-based messages into generate_json directly, so we serialize the whole chat.
+            transcript_lines: list[str] = []
+            for m in messages:
+                role = (m.get("role") or "").strip().lower()
+                content = m.get("content", "") or ""
+                if not content.strip():
+                    continue
+                if role == "system":
+                    transcript_lines.append("[SYSTEM]\n" + content.strip())
+                elif role == "user":
+                    transcript_lines.append("[USER] " + content.strip())
+                else:
+                    transcript_lines.append("[ASSISTANT] " + content.strip())
+
+            prompt = (
+                "You are generating the next multi-character turn. Follow the SYSTEM rules below.\n\n"
+                + "\n\n".join(transcript_lines)
+                + "\n\nIMPORTANT: Output ONLY valid JSON: {\"speaker\": string, \"message\": string}."
+            )
+
+            data = await self.provider.generate_json(prompt)
+            latency_ms = int((time.monotonic() - started) * 1000)
+            await self._log_chat_event(
+                db=db,
+                operation="room_turn",
+                latency_ms=latency_ms,
+                quality_status="ok",
+                generation_mode=generation_mode,
+            )
+            return data
+        except Exception as e:
+            latency_ms = int((time.monotonic() - started) * 1000)
+            await self._log_chat_event(
+                db=db,
+                operation="room_turn",
+                latency_ms=latency_ms,
+                quality_status="error",
+                generation_mode=generation_mode,
+                error_codes=["provider_error"],
+            )
+            raise ServiceException(f"AI provider error: {str(e)}")
 
     # Встроенный предохранитель (локальное состояние процесса)
     _circuit_state: dict[tuple[str, str], dict[str, float]] = {}
@@ -98,6 +252,14 @@ class AIService:
         return [self.provider]
 
     @staticmethod
+    def _select_provider() -> LLMProvider:
+        # Default provider selection for runtime.
+        # GroqProvider will handle missing API key at request time; we keep selection simple.
+        models = list(getattr(settings, "GROQ_FALLBACK_MODELS", None) or [])
+        primary = str(models[0]) if models else "llama-3.3-70b-versatile"
+        return GroqProvider(model=primary)
+
+    @staticmethod
     def _compute_prompt_hash(prompt: str, *, provider: str | None, model: str | None) -> str:
         payload = f"{provider or ''}|{model or ''}|{prompt}".encode("utf-8", errors="ignore")
         return hashlib.sha256(payload).hexdigest()
@@ -132,6 +294,18 @@ class AIService:
         lang = (language or "").strip().lower()
         if not lang:
             return None
+
+    @staticmethod
+    def _sanitize_scrambled_parts(parts) -> list[str] | None:
+        if parts is None:
+            return None
+        if isinstance(parts, list) and all(isinstance(p, str) and p.strip() for p in parts):
+            return [p.strip() for p in parts if p.strip()]
+        if isinstance(parts, str) and parts.strip():
+            # Common failure mode: model outputs a single string; split on whitespace.
+            chunks = [c.strip() for c in parts.replace("|", " ").split() if c.strip()]
+            return chunks if chunks else None
+        return None
 
         # Языки на кириллице (в продукте обычно выдаются на кириллице).
         if lang in {"russian", "kazakh", "ukrainian", "bulgarian", "belarusian", "serbian"}:
@@ -571,6 +745,215 @@ class AIService:
         return errors
 
     @staticmethod
+    def _sanitize_match_pairs(pairs) -> list[dict] | None:
+        # Accept a few common "almost-correct" shapes and convert them to:
+        # [{"left": str, "right": str}, ...]
+        if pairs is None:
+            return None
+
+        # Already correct
+        if isinstance(pairs, list) and all(
+            isinstance(p, dict) and isinstance(p.get("left"), str) and isinstance(p.get("right"), str) for p in pairs
+        ):
+            return pairs
+
+        # List of dicts with alternative common key names
+        if isinstance(pairs, list) and all(isinstance(p, dict) for p in pairs):
+            out: list[dict] = []
+            for p in pairs:
+                if not isinstance(p, dict):
+                    continue
+                left = p.get("left")
+                right = p.get("right")
+                if not isinstance(left, str) or not isinstance(right, str):
+                    # Common alternative keys
+                    cand = [
+                        (p.get("word"), p.get("translation")),
+                        (p.get("term"), p.get("definition")),
+                        (p.get("question"), p.get("answer")),
+                    ]
+                    left = None
+                    right = None
+                    for l, r in cand:
+                        if isinstance(l, str) and isinstance(r, str):
+                            left, right = l, r
+                            break
+
+                    # Fallback: pick first two string values
+                    if left is None or right is None:
+                        string_values = [v for v in p.values() if isinstance(v, str)]
+                        if len(string_values) >= 2:
+                            left, right = string_values[0], string_values[1]
+
+                if isinstance(left, str) and isinstance(right, str):
+                    out.append({"left": left, "right": right})
+
+            return out
+
+        # List of [left, right]
+        if isinstance(pairs, list) and all(isinstance(p, (list, tuple)) and len(p) == 2 for p in pairs):
+            out: list[dict] = []
+            for left, right in pairs:
+                if isinstance(left, str) and isinstance(right, str):
+                    out.append({"left": left, "right": right})
+            return out
+
+        # Dict of {left: right}
+        if isinstance(pairs, dict):
+            out = []
+            for k, v in pairs.items():
+                if isinstance(k, str) and isinstance(v, str):
+                    out.append({"left": k, "right": v})
+            return out
+
+        # Dict of {left: [...], right: [...]} (zipped)
+        if isinstance(pairs, dict) and isinstance(pairs.get("left"), list) and isinstance(pairs.get("right"), list):
+            lefts = pairs.get("left")
+            rights = pairs.get("right")
+            out = []
+            for l, r in zip(lefts, rights):
+                if isinstance(l, str) and isinstance(r, str):
+                    out.append({"left": l, "right": r})
+            return out
+
+        return None
+
+    def _sanitize_exercises_container(self, exercises_container: dict | None) -> dict | None:
+        if not isinstance(exercises_container, dict):
+            return exercises_container
+
+        exercises = exercises_container.get("exercises")
+        if not isinstance(exercises, list):
+            return exercises_container
+
+        sanitized: list[dict] = []
+        for ex in exercises:
+            if not isinstance(ex, dict):
+                continue
+            if ex.get("type") == "match":
+                fixed = self._sanitize_match_pairs(ex.get("pairs"))
+                if fixed is None:
+                    # Drop completely broken match exercise to avoid extra LLM repair calls.
+                    continue
+                ex = {**ex, "pairs": fixed}
+            elif ex.get("type") == "fill_blank":
+                cw = ex.get("correct_word")
+                if not isinstance(cw, str) or not cw.strip():
+                    # If correct_word is not a non-empty string, drop this exercise.
+                    continue
+            elif ex.get("type") == "scramble":
+                sp = self._sanitize_scrambled_parts(ex.get("scrambled_parts"))
+                if sp is None or len(sp) < 2:
+                    continue
+                ex = {**ex, "scrambled_parts": sp}
+            sanitized.append(ex)
+
+        return {**exercises_container, "exercises": sanitized}
+
+    @staticmethod
+    def _is_game_role_topic(topic: str) -> bool:
+        t = (topic or "").lower()
+        if not t.strip():
+            return False
+        markers = [
+            "mobile legends",
+            "moba",
+            "mlbb",
+            "мобла",
+            "мобле",
+            "моблу",
+            "мобла",
+            "mobile",
+            "легенд",
+            "marksman",
+            "fighter",
+            "tank",
+            "mage",
+            "support",
+            "assassin",
+            "hero",
+            "heroes",
+        ]
+
+        if any(m in t for m in markers):
+            return True
+
+        # Russian/Kazakh role phrases without explicit game name.
+        role_words = [
+            "роль",
+            "рөл",
+            "позиция",
+            "позициясы",
+        ]
+        marksman_words = [
+            "марк",
+            "марка",
+            "стрелок",
+            "мерген",
+            "атқыш",
+            "gold lane",
+            "голд лейн",
+            "голд",
+            "лейн",
+            "лайн",
+        ]
+        fighter_words = [
+            "файтер",
+            "бойцов",
+            "бойца",
+            "жекпе-жек",
+            "жауынгер",
+            "жойғыш",
+            "exp lane",
+            "эксп лейн",
+            "эксп",
+        ]
+
+        if any(w in t for w in role_words) and (any(w in t for w in marksman_words) or any(w in t for w in fighter_words)):
+            return True
+
+        return False
+
+    @staticmethod
+    def _has_game_context(text: str) -> bool:
+        s = (text or "").lower()
+        if not s.strip():
+            return False
+        # Minimal set of game-context markers in Kazakh/Russian/English transliteration.
+        markers = [
+            "ойын",
+            "матч",
+            "команда",
+            "карта",
+            "рөл",
+            "роль",
+            "лайн",
+            "лейн",
+            "голд",
+            "эксп",
+            "джангл",
+            "лес",
+            "крип",
+            "миньон",
+            "вышка",
+            "башня",
+            "фарма",
+            "фарм",
+            "предмет",
+            "итем",
+            "скилл",
+            "ульт",
+            "кейіпкер",
+            "герой",
+            "шабуыл",
+            "қорған",
+            "skill",
+            "item",
+            "lane",
+        ]
+        return any(m in s for m in markers)
+
+    @staticmethod
     def _vocab_words_from_list(vocabulary: list[dict] | None) -> set[str]:
         words: set[str] = set()
         for it in vocabulary or []:
@@ -599,7 +982,7 @@ class AIService:
             if not isinstance(ex_type, str) or not ex_type.strip():
                 continue
 
-            # Enforce source by exercise type.
+            # Определяем источник данных для каждого типа задания
             expected_source = "vocab" if ex_type in {"quiz", "match"} else "text"
 
             src = ex.get("source")
@@ -848,6 +1231,8 @@ class AIService:
     def _build_course_context_suffix(
         self,
         *,
+        topic: str | None = None,
+        verified_topic_context: str | None = None,
         prior_topics: list[str] | None,
         used_words: list[str] | None,
         opening_sentences: list[str] | None = None,
@@ -872,6 +1257,13 @@ class AIService:
             f"- The ONLY language allowed in 'translation' fields is {native_language}.\n"
             "- Do NOT start the lesson with generic filler like 'I like this game' unless it is essential. Start directly on the topic.\n"
         )
+
+        if topic and str(topic).strip():
+            suffix += f"- Current unit topic: {str(topic).strip()}\n"
+
+        if verified_topic_context and str(verified_topic_context).strip():
+            suffix += "- VERIFIED TOPIC CONTEXT (from web sources, use as ground truth; if missing details, do NOT invent):\n"
+            suffix += "  " + "\n  ".join(str(verified_topic_context).strip().splitlines()) + "\n"
 
         if prior_topics:
             suffix += "- Topics already covered (do NOT repeat the same scenarios/examples):\n"
@@ -969,6 +1361,7 @@ class AIService:
         exercises_container: dict,
         target_language: str,
         native_language: str,
+        topic: str,
         text: str,
         vocab_pairs: str,
         db: AsyncSession | None,
@@ -976,6 +1369,7 @@ class AIService:
         review_prompt = EXERCISES_REVIEW_TEMPLATE.format(
             target_language=target_language,
             native_language=native_language,
+            topic=topic,
         )
         review_prompt += "\n\nTEXT:\n" + str(text or "")
         review_prompt += "\n\nVOCAB_PAIRS:\n" + str(vocab_pairs or "")
@@ -1200,6 +1594,7 @@ class AIService:
                 vocabulary=vocab_list,
                 target_language=target_language,
                 native_language=native_language,
+                topic=topic,
                 db=db,
             )
             ex_text = await self.generate_exercises_text_only(
@@ -1207,6 +1602,7 @@ class AIService:
                 vocabulary=vocab_list,
                 target_language=target_language,
                 native_language=native_language,
+                topic=topic,
                 db=db,
             )
             exercises_container = {
@@ -1215,6 +1611,7 @@ class AIService:
         else:
             # Single-call generation
             prompt_ex = LESSON_EXERCISES_TEMPLATE.format(
+                topic=topic,
                 target_language=target_language,
                 native_language=native_language,
                 text=text,
@@ -1230,8 +1627,14 @@ class AIService:
         exercises_attempts = 0
         quality_status = "ok"
 
+        # Normalize common exercise-shape issues deterministically (reduces LLM repair calls)
+        exercises_container = self._sanitize_exercises_container(exercises_container)
+
         for _ in range(0, ex_repairs_max + 1):
             exercises_attempts += 1
+
+            # Re-sanitize before validation (and after any previous LLM fix)
+            exercises_container = self._sanitize_exercises_container(exercises_container)
             exercises = exercises_container.get("exercises") if isinstance(exercises_container, dict) else None
             errs = self._validate_exercises(exercises, target_language=target_language)
             if not errs:
@@ -1250,6 +1653,8 @@ class AIService:
                 ),
                 db=db,
             )
+
+            exercises_container = self._sanitize_exercises_container(exercises_container)
 
         # Строгий режим: обязательность traceability для разделенных упражнений
         if mode == "strict" and isinstance(exercises_container, dict):
@@ -1291,6 +1696,7 @@ class AIService:
                     exercises_container=exercises_container,
                     target_language=target_language,
                     native_language=native_language,
+                    topic=topic,
                     text=text,
                     vocab_pairs=vocab_pairs,
                     db=db,
@@ -1375,6 +1781,7 @@ class AIService:
         db: AsyncSession | None,
     ) -> dict:
         base_suffix = self._build_course_context_suffix(
+            topic=topic,
             prior_topics=prior_topics,
             used_words=used_words,
             opening_sentences=opening_sentences,
@@ -1426,6 +1833,7 @@ class AIService:
         vocabulary: list[dict],
         target_language: str,
         native_language: str,
+        topic: str,
         db: AsyncSession | None,
     ) -> dict:
         vocab_pairs = "\n".join(
@@ -1436,6 +1844,7 @@ class AIService:
         prompt = VOCAB_EXERCISES_TEMPLATE.format(
             target_language=target_language,
             native_language=native_language,
+            topic=topic,
             vocab_pairs=vocab_pairs,
         )
         prompt = self._truncate_prompt(prompt)
@@ -1454,6 +1863,7 @@ class AIService:
         vocabulary: list[dict],
         target_language: str,
         native_language: str,
+        topic: str,
         db: AsyncSession | None,
     ) -> dict:
         vocab_pairs = "\n".join(
@@ -1464,6 +1874,7 @@ class AIService:
         prompt = TEXT_EXERCISES_TEMPLATE.format(
             target_language=target_language,
             native_language=native_language,
+            topic=topic,
             text=str(text or ""),
             vocab_pairs=vocab_pairs,
         )
@@ -1504,7 +1915,16 @@ class AIService:
         provider_name = type(self.provider).__name__ if getattr(self, "provider", None) else None
         model_name = getattr(self.provider, "model", None) if getattr(self, "provider", None) else None
 
+        verified = None
+        try:
+            r = await self.topic_retrieval.retrieve(topic)
+            verified = r.to_prompt_block() if r is not None else None
+        except Exception:
+            verified = None
+
         base_suffix = self._build_course_context_suffix(
+            topic=topic,
+            verified_topic_context=verified,
             prior_topics=prior_topics,
             used_words=used_words,
             opening_sentences=opening_sentences,
@@ -1582,6 +2002,20 @@ class AIService:
                 target_language=target_language,
                 native_language=native_language,
             )
+
+            # Topic relevance: for game-role topics, enforce game context.
+            if mode == "strict" and self._is_game_role_topic(topic):
+                txt = str(lesson_core.get("text") or "") if isinstance(lesson_core, dict) else ""
+                if not self._has_game_context(txt):
+                    errs = list(errs) + [
+                        {
+                            "code": "topic_not_game_context",
+                            "field": "text",
+                            "reason": "topic_relevance",
+                            "message": "Topic indicates a MOBA game/roles, but the text lacks game context (match/team/roles/map/items).",
+                        }
+                    ]
+
             if not errs:
                 break
             validation_errors.extend(errs)
@@ -1594,7 +2028,7 @@ class AIService:
                 errors=self._errors_to_patch_lines(errs),
                 instruction=(
                     f"You previously generated lesson JSON for {target_language}/{native_language} but it failed validation. "
-                    f"Fix the SAME JSON." 
+                    f"Fix the SAME JSON. If the topic is about a MOBA game / Mobile Legends roles (marksman/fighter/etc.), rewrite the text to be explicitly about the video game (match, team, roles, map, items), not real-life warriors." 
                 ),
                 db=db,
             )
@@ -1652,6 +2086,7 @@ class AIService:
     async def generate_exercises_only(
         self,
         *,
+        topic: str,
         text: str,
         vocabulary: list[dict],
         target_language: str,
@@ -1678,6 +2113,7 @@ class AIService:
         prompt_ex = LESSON_EXERCISES_TEMPLATE.format(
             target_language=target_language,
             native_language=native_language,
+            topic=topic,
             text=str(text or ""),
             vocab_pairs=vocab_pairs,
         )

@@ -10,6 +10,17 @@ from app.services.ai_service import ai_service
 from tests.mocks import MockLLMProvider
 from app.core.config import settings
 
+
+pytestmark = pytest.mark.skipif(
+    not (
+        getattr(settings, "ENABLE_LEGACY_PATH", False)
+        and getattr(settings, "ENABLE_LEGACY_LESSONS", False)
+        and getattr(settings, "ENABLE_LEGACY_VOCABULARY", False)
+        and getattr(settings, "ENABLE_LEGACY_ROLEPLAY", False)
+    ),
+    reason="Legacy endpoints are disabled by feature flags",
+)
+
 # Для тестового окружения делаем упор на моки, чтобы не зависеть от наличия переменных окружения.
 
 # Переопределяем провайдера глобально для этого модуля.

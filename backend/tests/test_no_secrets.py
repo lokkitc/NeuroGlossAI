@@ -19,6 +19,9 @@ def test_no_api_secrets_committed():
 
     excluded_dirs = {
         ".git",
+        "proc",
+        "sys",
+        "dev",
         "node_modules",
         ".venv",
         "venv",

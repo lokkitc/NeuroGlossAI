@@ -5,7 +5,7 @@ Generate content that is educational, engaging, and appropriate for the specifie
 
 LESSON_TEXT_ONLY_TEMPLATE = """Generate ONLY a language lesson text for {target_language} learners.
 
-Topic: {topic}
+COURSE UNIT TOPIC / LESSON THEME: {topic}
 Level: {level}
 Native language: {native_language}
 Student interests: {interests}
@@ -14,6 +14,24 @@ Requirements:
 1. Create a 150-200 word text in {target_language} strictly about the topic.
 2. Use only {target_language} in the text. Do not include any {native_language} or English words.
 3. Stay on-topic. Do not switch to a generic or unrelated topic.
+
+Content requirements (make it informative, not generic):
+- Explain the key idea of the topic in simple A1 sentences.
+- If the topic is a GAME ROLE topic (marksman/fighter/etc.), include practical game context:
+  - what the role does
+  - where the role usually plays (lane/position)
+  - what to do early vs late
+  - 1-2 common mistakes to avoid
+
+Topic disambiguation (IMPORTANT):
+- If the topic mentions Mobile Legends, MOBA, heroes, roles like marksman/fighter/tank/mage/support/assassin, it MUST be about the VIDEO GAME context (match, team, roles, map, items, skills).
+- Do NOT write about real-world warriors, history, war, or heroic deeds unless the topic explicitly asks for real history.
+
+Entity rules (IMPORTANT):
+- Do NOT invent character/hero names.
+- If the topic provides specific real names/entities, you may use ONLY those.
+- If VERIFIED TOPIC CONTEXT provides a verified roster/entities list, you may use ONLY names from that list.
+- Otherwise, write using generic role terms (e.g., "marksman", "fighter", "the player", "the team") without naming specific heroes.
 
 Hard rules:
 - Output must be valid JSON only. No markdown. No extra keys.
@@ -70,8 +88,18 @@ Requirements:
    - translation in {native_language}
    - context sentence in {target_language}
 
+Content requirements (make it informative, not generic):
+- Explain the key idea of the topic in simple A1 sentences.
+- If the topic is a GAME ROLE topic (marksman/fighter/etc.), include practical game context:
+  - what the role does
+  - where the role usually plays (lane/position)
+  - what to do early vs late
+  - 1-2 common mistakes to avoid
+
 Hard rules:
 - The lesson text must reflect the topic. If the topic is game-related (e.g., Mobile Legends), the text must mention game concepts (players, match, roles, team, items, map, etc.) in {target_language}.
+- If the topic mentions heroes/roles (marksman/fighter/etc.), interpret them as GAME ROLES (MOBA), not real-world warriors.
+- Do NOT invent hero/character names. Use only names explicitly provided in the topic OR present in VERIFIED TOPIC CONTEXT roster/entities, otherwise keep it generic (roles, team, match).
 - Do not talk about "alphabet", "letters", or pronunciation unless the topic explicitly asks for it.
 - Output must be valid JSON only. No markdown. No extra keys.
 
@@ -90,6 +118,9 @@ Output JSON format:
 
 VOCAB_EXERCISES_TEMPLATE = """Generate ONLY vocabulary-based exercises for a {target_language} lesson.
 
+COURSE UNIT TOPIC / LESSON THEME:
+{topic}
+
 Native language: {native_language}
 
 Vocabulary pairs:
@@ -99,6 +130,7 @@ Rules:
 - Output must be valid JSON only. No markdown. No extra keys.
 - Every exercise MUST be solvable using ONLY the vocabulary pairs.
 - No English words.
+- Do NOT invent any named entities (heroes/characters). Use only terms present in the vocabulary pairs.
 - Include traceability fields:
   - source: must be "vocab"
   - targets: list of vocabulary words used by the exercise
@@ -132,6 +164,9 @@ Output JSON format:
 
 TEXT_EXERCISES_TEMPLATE = """Generate ONLY text-based exercises for a {target_language} lesson.
 
+COURSE UNIT TOPIC / LESSON THEME:
+{topic}
+
 Native language: {native_language}
 
 Text:
@@ -144,6 +179,7 @@ Rules:
 - Output must be valid JSON only. No markdown. No extra keys.
 - Exercises MUST be solvable using ONLY the provided Text and Vocabulary pairs.
 - No English words.
+- Do NOT invent any named entities (heroes/characters). Use only what exists in the provided Text/Vocabulary pairs.
 - Include traceability fields:
   - source: must be "text"
   - targets: list of vocabulary words used by the exercise
@@ -264,6 +300,9 @@ Output JSON format:
 
 LESSON_EXERCISES_TEMPLATE = """Generate 4-5 varied exercises based on this {target_language} lesson.
 
+COURSE UNIT TOPIC / LESSON THEME:
+{topic}
+
 Language rules (very important):
 - quiz.question MUST be only in {target_language}.
 - quiz.options MUST be only in {target_language}. Avoid single-word options that could be mistaken for another language; prefer short phrases (2-5 words) or numerals where appropriate.
@@ -288,6 +327,7 @@ Create exercises of these types:
 Quality check before output:
 - Verify every field follows the language rules above.
 - Every exercise must be solvable using ONLY the provided Text and Vocabulary pairs.
+- Do NOT invent any named entities (heroes/characters). Use only what exists in the provided Text/Vocabulary pairs.
 
 Output JSON format:
 {{

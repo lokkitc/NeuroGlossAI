@@ -5,6 +5,13 @@
 
 import pytest
 from httpx import AsyncClient
+from app.core.config import settings
+
+
+pytestmark = pytest.mark.skipif(
+    not getattr(settings, "ENABLE_LEGACY_LESSONS", False),
+    reason="Legacy /lessons endpoints are disabled by feature flag",
+)
 
 # Мокаем AI сервис для уроков
 @pytest.fixture

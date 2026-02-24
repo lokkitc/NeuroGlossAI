@@ -178,6 +178,39 @@ async def update_user_me(
     if user_in.native_language:
         current_user.native_language = user_in.native_language
 
+    if user_in.avatar_url is not None:
+        current_user.avatar_url = user_in.avatar_url
+
+    if user_in.thumbnail_url is not None:
+        current_user.thumbnail_url = user_in.thumbnail_url
+
+    if user_in.banner_url is not None:
+        current_user.banner_url = user_in.banner_url
+
+    if user_in.preferred_name is not None:
+        current_user.preferred_name = user_in.preferred_name
+
+    if user_in.bio is not None:
+        current_user.bio = user_in.bio
+
+    if user_in.timezone is not None:
+        current_user.timezone = user_in.timezone
+
+    if user_in.ui_theme is not None:
+        current_user.ui_theme = user_in.ui_theme
+
+    if user_in.assistant_tone is not None:
+        current_user.assistant_tone = user_in.assistant_tone
+
+    if user_in.assistant_verbosity is not None:
+        current_user.assistant_verbosity = user_in.assistant_verbosity
+
+    if user_in.preferences is not None:
+        current_user.preferences = user_in.preferences
+
+    if user_in.interests is not None:
+        current_user.interests = user_in.interests
+
     # Обработка прочих полей (например ссылка на аватар), если они добавлены в модель
     
     await db.commit()

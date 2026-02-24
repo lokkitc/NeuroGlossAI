@@ -7,6 +7,13 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.main import app
+from app.core.config import settings
+
+
+pytestmark = pytest.mark.skipif(
+    not getattr(settings, "ENABLE_LEGACY_PATH", False),
+    reason="Legacy /path endpoints are disabled by feature flag",
+)
 
 # Мокаем AI сервис, чтобы во время тестов не делать реальные API/LLM вызовы
 @pytest.fixture

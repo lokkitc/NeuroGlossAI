@@ -48,6 +48,9 @@ class GroqProvider(LLMProvider):
             return text[start : end + 1]
 
         timeout = float(getattr(settings, "AI_REQUEST_TIMEOUT_SECONDS", 30) or 30)
+        # Groq SDK may internally retry with backoff on 429. If we wrap it with a strict wait_for(timeout)
+        # we can cancel the request mid-retry. Give a larger total wall-clock window.
+        total_timeout = max(timeout, timeout * 4.0)
         max_chars = int(getattr(settings, "AI_MAX_RESPONSE_CHARS", 200000) or 200000)
 
         try:
@@ -63,7 +66,7 @@ class GroqProvider(LLMProvider):
                     response_format={"type": "json_object"},
                     **({"temperature": float(temperature)} if temperature is not None else {}),
                 ),
-                timeout=timeout,
+                timeout=total_timeout,
             )
             content = chat_completion.choices[0].message.content
             logger.debug("Groq JSON response received")
@@ -95,7 +98,7 @@ class GroqProvider(LLMProvider):
                     model=self.model,
                     **({"temperature": float(temperature)} if temperature is not None else {}),
                 ),
-                timeout=timeout,
+                timeout=total_timeout,
             )
             content = chat_completion.choices[0].message.content
             if content and len(content) > max_chars:
@@ -106,6 +109,7 @@ class GroqProvider(LLMProvider):
     async def generate_text(self, prompt: str, *, temperature: float | None = None) -> str:
         await self._ensure_client()
         timeout = float(getattr(settings, "AI_REQUEST_TIMEOUT_SECONDS", 30) or 30)
+        total_timeout = max(timeout, timeout * 4.0)
         max_chars = int(getattr(settings, "AI_MAX_RESPONSE_CHARS", 200000) or 200000)
         try:
             chat_completion = await asyncio.wait_for(
@@ -119,7 +123,7 @@ class GroqProvider(LLMProvider):
                     model=self.model,
                     **({"temperature": float(temperature)} if temperature is not None else {}),
                 ),
-                timeout=timeout,
+                timeout=total_timeout,
             )
             content = chat_completion.choices[0].message.content
             if content and len(content) > max_chars:
@@ -132,6 +136,7 @@ class GroqProvider(LLMProvider):
     async def generate_chat(self, messages: List[Dict[str, str]], *, temperature: float | None = None) -> str:
         await self._ensure_client()
         timeout = float(getattr(settings, "AI_REQUEST_TIMEOUT_SECONDS", 30) or 30)
+        total_timeout = max(timeout, timeout * 4.0)
         max_chars = int(getattr(settings, "AI_MAX_RESPONSE_CHARS", 200000) or 200000)
         try:
             chat_completion = await asyncio.wait_for(
@@ -140,7 +145,7 @@ class GroqProvider(LLMProvider):
                     model=self.model,
                     **({"temperature": float(temperature)} if temperature is not None else {}),
                 ),
-                timeout=timeout,
+                timeout=total_timeout,
             )
             content = chat_completion.choices[0].message.content
             logger.debug("Groq chat response received")

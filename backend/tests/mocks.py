@@ -8,6 +8,61 @@ from app.core.ai.base import LLMProvider
 
 class MockLLMProvider(LLMProvider):
     async def generate_json(self, prompt: str) -> Dict[str, Any]:
+        # Chat-learning mini-lesson (grounded in chat quotes)
+        if "Create a mini-lesson from the following chat" in prompt and "source_quote" in prompt and "sentence_source" in prompt:
+            return {
+                "title": "Chat Mini Lesson",
+                "topic": "Conversation",
+                "text": "Mini lesson based on the chat.",
+                "vocabulary": [
+                    {
+                        "phrase": "apple",
+                        "meaning": "яблоко",
+                        "source_quote": "I bought an apple.",
+                        "example_quote": "I bought an apple.",
+                    },
+                    {
+                        "phrase": "coffee",
+                        "meaning": "кофе",
+                        "source_quote": "I need coffee.",
+                        "example_quote": "I need coffee.",
+                    },
+                    {
+                        "phrase": "music",
+                        "meaning": "музыка",
+                        "source_quote": "I like music.",
+                        "example_quote": "I like music.",
+                    },
+                    {
+                        "phrase": "book",
+                        "meaning": "книга",
+                        "source_quote": "This book is good.",
+                        "example_quote": "This book is good.",
+                    },
+                    {
+                        "phrase": "park",
+                        "meaning": "парк",
+                        "source_quote": "We walked in the park.",
+                        "example_quote": "We walked in the park.",
+                    },
+                    {
+                        "phrase": "tomorrow",
+                        "meaning": "завтра",
+                        "source_quote": "See you tomorrow.",
+                        "example_quote": "See you tomorrow.",
+                    },
+                ],
+                "exercises": [
+                    {
+                        "type": "fill_blank",
+                        "sentence_source": "I bought an apple.",
+                        "targets": ["apple"],
+                        "sentence": "I bought an ___.",
+                        "correct": "apple",
+                    }
+                ],
+            }
+
         if "expert curriculum designer" in prompt:
              return {
                 "sections": [
@@ -62,21 +117,6 @@ class MockLLMProvider(LLMProvider):
                             {"left": "команда", "right": "Команда"},
                             {"left": "қарсылас", "right": "Противник"}
                         ]
-                    },
-                    {
-                        "type": "true_false",
-                        "statement": "Мақсат — қарсыластың базасын бұзу",
-                        "is_true": True
-                    },
-                    {
-                        "type": "true_false",
-                        "statement": "Сен кітап оқисың",
-                        "is_true": False
-                    },
-                    {
-                        "type": "true_false",
-                        "statement": "Сен командамен ойнайсың",
-                        "is_true": True
                     },
                     {
                         "type": "fill_blank",

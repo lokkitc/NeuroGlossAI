@@ -36,6 +36,14 @@ wheels/
 venv/
 .venv/
 
+# Flutter frontend (do not ignore app sources)
+!frontend/
+!frontend/**
+!frontend/lib/
+!frontend/lib/**
+!frontend/pubspec.yaml
+!frontend/analysis_options.yaml
+
 # Environment variables
 .env
 .env.local
