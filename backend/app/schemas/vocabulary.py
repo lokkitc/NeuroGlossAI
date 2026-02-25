@@ -1,1 +1,0 @@
-from app.features.vocabulary.schemas import VocabularyItemResponse, VocabularyReviewRequest

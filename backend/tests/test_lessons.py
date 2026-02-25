@@ -13,7 +13,7 @@ pytestmark = pytest.mark.skipif(
     reason="Legacy /lessons endpoints are disabled by feature flag",
 )
 
-# Мокаем AI сервис для уроков
+                             
 @pytest.fixture
 def mock_ai_lesson_service(monkeypatch):
     async def mock_generate_lesson(*args, **kwargs):
@@ -37,14 +37,14 @@ def mock_ai_lesson_service(monkeypatch):
 
 @pytest.fixture
 async def lesson_auth_headers(async_client: AsyncClient):
-    # 1. Регистрация пользователя
+                                 
     await async_client.post("/api/v1/auth/register", json={
         "username": "lessonuser",
         "email": "lesson@example.com",
         "password": "password123"
     })
     
-    # 2. Логин
+              
     login_res = await async_client.post("/api/v1/auth/login", data={
         "username": "lessonuser",
         "password": "password123"
@@ -55,13 +55,13 @@ async def lesson_auth_headers(async_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_generate_lesson_flow(async_client: AsyncClient, lesson_auth_headers, mock_ai_lesson_service):
     headers = lesson_auth_headers
-    # 1. Обновление языков (опционально)
+                                        
     await async_client.put("/api/v1/users/me/languages", json={
         "target_language": "English",
         "native_language": "Russian"
     }, headers=headers)
 
-    # 2a. Генерация курса, чтобы получить active enrollment + level_template_id
+                                                                               
     course_resp = await async_client.post(
         "/api/v1/path/generate",
         json={"interests": ["Testing"], "level": "A1", "regenerate": True},
@@ -71,7 +71,7 @@ async def test_generate_lesson_flow(async_client: AsyncClient, lesson_auth_heade
     course = course_resp.json()
     first_level_template_id = course["sections"][0]["units"][0]["levels"][0]["id"]
 
-    # 2. Генерация урока
+                        
     response = await async_client.post("/api/v1/lessons/generate", json={
         "level_template_id": first_level_template_id,
         "topic": "Travel",
@@ -85,7 +85,7 @@ async def test_generate_lesson_flow(async_client: AsyncClient, lesson_auth_heade
     assert len(data["vocabulary_items"]) > 0
     assert "id" in data
     
-    # Проверяем структуру упражнений
+                                    
     assert "exercises" in data
     assert isinstance(data["exercises"], list)
     assert len(data["exercises"]) > 0
@@ -94,7 +94,7 @@ async def test_generate_lesson_flow(async_client: AsyncClient, lesson_auth_heade
 @pytest.mark.asyncio
 async def test_lesson_languages_persistence(async_client: AsyncClient, lesson_auth_headers, mock_ai_lesson_service):
     headers = lesson_auth_headers
-    # Меняем языки на French -> German
+                                      
     res = await async_client.put("/api/v1/users/me/languages", json={
         "target_language": "German",
         "native_language": "French"
@@ -102,7 +102,7 @@ async def test_lesson_languages_persistence(async_client: AsyncClient, lesson_au
     assert res.status_code == 200
     assert res.json()["target_language"] == "German"
 
-    # Проверяем профиль пользователя
+                                    
     me_res = await async_client.get("/api/v1/auth/me", headers=headers)
     assert me_res.json()["native_language"] == "French"
 
@@ -115,7 +115,7 @@ async def test_lesson_languages_persistence(async_client: AsyncClient, lesson_au
     course = course_resp.json()
     first_level_template_id = course["sections"][0]["units"][0]["levels"][0]["id"]
 
-    # Генерируем урок и проверяем, что языки применились
+                                                        
     lesson_res = await async_client.post("/api/v1/lessons/generate", json={
         "level_template_id": first_level_template_id,
         "topic": "Food",

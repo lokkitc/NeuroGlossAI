@@ -10,7 +10,7 @@ import re
 def test_no_api_secrets_committed():
     repo_root = pathlib.Path(__file__).resolve().parents[2]
 
-    # Паттерны для выявления типичных утечек секретов (консервативно, чтобы не было ложных срабатываний)
+                                                                                                        
     patterns = [
         re.compile(r"\bgsk_[A-Za-z0-9]{10,}\b"),
         re.compile(r"\bapi_key\s*=\s*\"[^\"\n]{10,}\""),
@@ -31,7 +31,7 @@ def test_no_api_secrets_committed():
     }
 
     excluded_files = {
-        # Не сканируем env файлы (они должны быть gitignored), чтобы не ловить локальные ложные падения.
+                                                                                                        
         ".env",
         ".env.local",
         ".env.development.local",

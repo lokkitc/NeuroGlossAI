@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.api import deps
-from app.models.user import User
-from app.models.characters import Room, RoomParticipant
-from app.repositories.room import RoomRepository, RoomParticipantRepository
-from app.schemas.room import RoomCreate, RoomOut, RoomUpdate
+from app.features.users.models import User
+from app.features.rooms.models import Room, RoomParticipant
+from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
+from app.features.rooms.schemas import RoomCreate, RoomOut, RoomUpdate
 from app.core.exceptions import EntityNotFoundException, ServiceException
 
 

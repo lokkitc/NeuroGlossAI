@@ -9,15 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.models.user import User
+from app.features.users.models import User
 from app.features.course.models import (
     CourseTemplate,
     CourseSectionTemplate,
     CourseUnitTemplate,
     CourseLevelTemplate,
 )
-from app.models.enrollment import Enrollment
-from app.models.progress import UserLevelProgress, ProgressStatus
+from app.features.user_progress.models import Enrollment, UserLevelProgress, ProgressStatus
 from app.features.ai.ai_service import ai_service
 from app.core.events.base import event_bus, LevelCompletedEvent
 

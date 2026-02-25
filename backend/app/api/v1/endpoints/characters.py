@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.api import deps
-from app.models.user import User
-from app.models.characters import Character
-from app.repositories.character import CharacterRepository
-from app.schemas.character import CharacterCreate, CharacterOut, CharacterUpdate
+from app.features.users.models import User
+from app.features.characters.models import Character
+from app.features.characters.repository import CharacterRepository
+from app.features.characters.schemas import CharacterCreate, CharacterOut, CharacterUpdate
 from app.core.exceptions import EntityNotFoundException
 
 

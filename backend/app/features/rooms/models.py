@@ -42,9 +42,9 @@ class RoomParticipant(Base):
     room_id = Column(GUID, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
     character_id = Column(GUID, ForeignKey("characters.id", ondelete="CASCADE"), nullable=False)
 
-    # Higher priority speaks more often by default
+                                                  
     priority = Column(Integer, nullable=False, default=0)
-    # If set, assistant will almost always keep this participant in the scene.
+                                                                              
     is_pinned = Column(Boolean, nullable=False, default=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select, update, delete, func
 
 from app.features.auth.models import RefreshToken
-from app.repositories.base import BaseRepository
+from app.features.common.db import BaseRepository
 
 
 class RefreshTokenRepository(BaseRepository[RefreshToken]):

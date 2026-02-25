@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.features.characters.models import Character
-from app.repositories.base import BaseRepository
+from app.features.common.db import BaseRepository
 
 
 class CharacterRepository(BaseRepository[Character]):

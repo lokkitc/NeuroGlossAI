@@ -205,7 +205,7 @@ class _ChatSessionPageState extends ConsumerState<ChatSessionPage> with SingleTi
                           if (lessons.isEmpty)
                             const EmptyState(
                               title: 'No lessons yet',
-                              subtitle: 'Tap Generate to create a lesson from the last turns.',
+                              subtitle: 'Tap Generate to create a lesson from the last 80 turns.',
                             )
                           else
                             ...[

@@ -17,14 +17,12 @@ from app.api import deps
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.core.exceptions import NeuroGlossException
-from app.schemas.user import UserResponse, UserUpdateLanguages, UserUpdate
-from app.models.user import User
-from app.models.streak import Streak
-from app.models.enrollment import Enrollment
-from app.models.progress import UserLevelProgress
-from app.models.attempts import UserLevelAttempt
-from app.models.generated_content import GeneratedLesson, GeneratedVocabularyItem
-from app.models.srs import LessonLexeme, UserLexeme
+from app.features.users.schemas import UserResponse, UserUpdateLanguages, UserUpdate
+from app.features.users.models import User
+from app.features.user_progress.models import Streak, Enrollment, UserLevelProgress, UserLevelAttempt
+from app.features.lessons.models import GeneratedLesson, GeneratedVocabularyItem
+from app.features.srs.models import LessonLexeme, UserLexeme
+from app.features.course.models import CourseTemplate, CourseSectionTemplate, CourseUnitTemplate
 
 router = APIRouter()
 
@@ -59,7 +57,7 @@ async def export_user_data(
     streaks_result = await db.execute(select(Streak).where(Streak.user_id == current_user.id))
     streaks = streaks_result.scalars().all()
 
-    # Долгосрочная модель (шаблоны курса + записи курса + прогресс + сгенерированный контент)
+                                                                                             
     enrollments_result = await db.execute(
         select(Enrollment)
         .where(Enrollment.user_id == current_user.id)
@@ -120,35 +118,35 @@ async def reset_progress(
     Сброс контента пользователя: удаляет активные записи курса пользователя, прогресс, сгенерированные уроки и словарь.
     Не сбрасывает опыт или общую статистику геймификации (как запрошено).
     """
-    # Контент долгосрочной модели: словарь -> уроки -> прогресс -> записи курса
+                                                                               
     enrollments = await db.execute(select(Enrollment).where(Enrollment.user_id == current_user.id))
     enrollments = enrollments.scalars().all()
     enrollment_ids = [e.id for e in enrollments]
 
     if enrollment_ids:
-        # Словарь зависит от уроков
+                                   
         glessons = await db.execute(select(GeneratedLesson).where(GeneratedLesson.enrollment_id.in_(enrollment_ids)))
         glessons = glessons.scalars().all()
         glesson_ids = [l.id for l in glessons]
 
         if glesson_ids:
-            # Удаляем связи урока со словарём (таблица lesson_lexemes), иначе FK не даст удалить урок.
+                                                                                                      
             await db.execute(delete(LessonLexeme).where(LessonLexeme.generated_lesson_id.in_(glesson_ids)))
             await db.execute(delete(GeneratedVocabularyItem).where(GeneratedVocabularyItem.generated_lesson_id.in_(glesson_ids)))
             await db.execute(delete(GeneratedLesson).where(GeneratedLesson.id.in_(glesson_ids)))
 
-        # Удаляем привязки слов пользователя к записям курса, иначе FK не даст удалить enrollment.
+                                                                                                  
         await db.execute(delete(UserLexeme).where(UserLexeme.enrollment_id.in_(enrollment_ids)))
 
-        # Удаляем попытки прохождения уровней перед удалением прогресса (FK constraint)
+                                                                                       
         await db.execute(delete(UserLevelAttempt).where(UserLevelAttempt.enrollment_id.in_(enrollment_ids)))
         await db.execute(delete(UserLevelProgress).where(UserLevelProgress.enrollment_id.in_(enrollment_ids)))
         await db.execute(delete(Enrollment).where(Enrollment.id.in_(enrollment_ids)))
 
-    # Важно: не удаляем CourseTemplate'ы в reset.
-    # Это снижает риск удаления данных, на которые могут ссылаться другие записи (или будущие переиспользуемые шаблоны).
+                                                 
+                                                                                                                        
 
-    # Сбрасываем карту уровней языка (так как контент удалён), но сохраняем опыт
+                                                                                
     current_user.language_levels = {} 
     
     await db.commit()
@@ -166,7 +164,7 @@ async def update_user_me(
     Используйте это для настроек, информации о профиле и т.д.
     """
     if user_in.email:
-        # Проверка уникальности, если email меняется (опущено для краткости)
+                                                                            
         current_user.email = user_in.email
     
     if user_in.username:
@@ -211,7 +209,7 @@ async def update_user_me(
     if user_in.interests is not None:
         current_user.interests = user_in.interests
 
-    # Обработка прочих полей (например ссылка на аватар), если они добавлены в модель
+                                                                                     
     
     await db.commit()
     await db.refresh(current_user)

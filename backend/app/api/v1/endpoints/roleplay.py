@@ -2,8 +2,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from app.api import deps
-from app.services.learning_service import LearningService
-from app.models.user import User
+from app.features.learning.service import LearningService
+from app.features.users.models import User
 from app.core.rate_limit import limiter
 
 router = APIRouter()
@@ -24,7 +24,7 @@ async def chat_roleplay(
     current_user: User = Depends(deps.get_current_user),
     service: LearningService = Depends(deps.get_learning_service)
 ) -> Any:
-    # Явная обработка ошибок не требуется, Глобальный Обработчик перехватит исключения Сервиса
+                                                                                              
     response_text = await service.process_roleplay_message(
         scenario=chat_in.scenario,
         role=chat_in.role,

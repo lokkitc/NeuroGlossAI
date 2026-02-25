@@ -19,7 +19,7 @@ import logging
 from app.core.logging_json import JsonFormatter
 from app.core.request_context import request_id_ctx, RequestIdFilter
 
-# Настройка логирования
+                       
 root_logger = logging.getLogger()
 root_logger.handlers.clear()
 handler = logging.StreamHandler()
@@ -30,7 +30,7 @@ root_logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
 logger = logging.getLogger(__name__)
 
-# Регистрация слушателей событий
+                                
 event_bus.subscribe(LevelCompletedEvent, XPListener())
 event_bus.subscribe(LevelCompletedEvent, AchievementListener())
 
@@ -62,11 +62,11 @@ async def request_id_middleware(request: Request, call_next):
     )
     return response
 
-# Прикрепление ограничителя к состоянию приложения, чтобы зависимости могли получить к нему доступ
+                                                                                                  
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Глобальный обработчик исключений
+                                  
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", None)
@@ -131,11 +131,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content["details"] = exc.errors()
     return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=content)
 
-# Установка всех источников, разрешенных CORS
+                                             
 if settings.BACKEND_CORS_ORIGINS:
     cors_origins = [str(origin).strip() for origin in settings.BACKEND_CORS_ORIGINS]
     allow_credentials = True
-    # Нельзя сочетать allow_credentials=True и allow_origins=['*']
+                                                                  
     if any(origin == "*" for origin in cors_origins):
         allow_credentials = False
     app.add_middleware(

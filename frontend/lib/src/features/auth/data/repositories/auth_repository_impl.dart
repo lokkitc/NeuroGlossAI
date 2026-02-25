@@ -17,6 +17,8 @@ class AuthRepositoryImpl implements AuthRepository {
     final dto = await _remote.login(username: username, password: password);
     final entity = AuthMapper.toEntity(dto);
     await _tokenStorage.writeAccessToken(entity.accessToken);
+    await _tokenStorage.writeRefreshToken(entity.refreshToken);
+    await _tokenStorage.writeSessionId(entity.sessionId);
     return entity;
   }
 
@@ -66,6 +68,14 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    final rt = await _tokenStorage.readRefreshToken();
+    if (rt != null && rt.isNotEmpty) {
+      try {
+        await _remote.logout(refreshToken: rt);
+      } on AppException {
+      } catch (_) {
+      }
+    }
     await _tokenStorage.clear();
   }
 
@@ -73,6 +83,19 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> hasToken() async {
     final t = await _tokenStorage.readAccessToken();
     return t != null && t.isNotEmpty;
+  }
+
+  Future<AuthSession> refresh() async {
+    final rt = await _tokenStorage.readRefreshToken();
+    if (rt == null || rt.isEmpty) {
+      throw const UnauthorizedException('Unauthorized');
+    }
+    final dto = await _remote.refresh(refreshToken: rt);
+    final entity = AuthMapper.toEntity(dto);
+    await _tokenStorage.writeAccessToken(entity.accessToken);
+    await _tokenStorage.writeRefreshToken(entity.refreshToken);
+    await _tokenStorage.writeSessionId(entity.sessionId);
+    return entity;
   }
 
   Future<UserEntity?> tryMe() async {

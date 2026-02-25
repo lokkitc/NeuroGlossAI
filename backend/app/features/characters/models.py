@@ -22,14 +22,14 @@ class Character(Base):
     display_name = Column(String, nullable=False, default="")
     description = Column(String, nullable=False, default="")
 
-    # System prompt / persona configuration
+                                           
     system_prompt = Column(String, nullable=False, default="")
     style_prompt = Column(String, nullable=True)
 
     is_public = Column(Boolean, nullable=False, default=False)
     is_nsfw = Column(Boolean, nullable=False, default=False)
 
-    # Optional structured settings (temperature hints, etc.)
+                                                            
     settings = Column(JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

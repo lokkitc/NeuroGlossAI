@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.features.rooms.models import Room, RoomParticipant
-from app.repositories.base import BaseRepository
+from app.features.common.db import BaseRepository
 
 
 class RoomRepository(BaseRepository[Room]):

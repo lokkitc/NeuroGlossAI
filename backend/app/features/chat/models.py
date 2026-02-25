@@ -28,13 +28,13 @@ class ChatSession(Base):
 
     owner_user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    # For 1:1 sessions
+                      
     character_id = Column(GUID, ForeignKey("characters.id", ondelete="SET NULL"), nullable=True)
 
-    # For rooms
+               
     room_id = Column(GUID, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
 
-    # Optional binding to legacy course enrollment and active level
+                                                                   
     enrollment_id = Column(GUID, ForeignKey("enrollments.id", ondelete="SET NULL"), nullable=True)
     active_level_template_id = Column(GUID, ForeignKey("course_level_templates.id", ondelete="SET NULL"), nullable=True)
 
@@ -42,10 +42,10 @@ class ChatSession(Base):
 
     is_archived = Column(Boolean, nullable=False, default=False)
 
-    # Rolling state for context building
+                                        
     last_summary_at_turn = Column(Integer, nullable=False, default=0)
 
-    # Auto-learning cadence state (turn_index of last generated lesson)
+                                                                       
     last_learning_lesson_at_turn = Column(Integer, nullable=False, default=0)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -84,18 +84,18 @@ class ChatTurn(Base):
 
     session_id = Column(GUID, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False)
 
-    # Monotonic increasing index starting from 1
+                                                
     turn_index = Column(Integer, nullable=False)
 
-    # 'user' | 'assistant' | 'system' | 'director'
+                                                  
     role = Column(String, nullable=False, default="user")
 
-    # If this message is spoken by a character in a room
+                                                        
     character_id = Column(GUID, ForeignKey("characters.id", ondelete="SET NULL"), nullable=True)
 
     content = Column(Text, nullable=False, default="")
 
-    # Diagnostics from the model (provider/model/quality etc.)
+                                                              
     meta = Column(JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -112,7 +112,7 @@ class ChatSessionSummary(Base):
 
     session_id = Column(GUID, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False)
 
-    # Summary covers turns up to this index
+                                           
     up_to_turn_index = Column(Integer, nullable=False)
 
     content = Column(Text, nullable=False, default="")
@@ -138,10 +138,10 @@ class ModerationEvent(Base):
 
     event_type = Column(String, nullable=False, default="")
 
-    # 'allow' | 'block' | 'filter'
+                                  
     decision = Column(String, nullable=False, default="allow")
 
-    # Structured payload: categories, model output, etc.
+                                                        
     details = Column(JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

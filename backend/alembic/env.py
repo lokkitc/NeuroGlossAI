@@ -7,26 +7,26 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# Импортируем Base и Settings
+                             
 from app.models.base import Base
-# Импортируем все модели, чтобы они зарегистрировались в metadata
+                                                                 
 from app.models import * 
 from app.core.config import settings
 
-# Alembic Config объект даёт доступ к значениям из используемого .ini
+                                                                     
 config = context.config
 
-# Настраиваем логирование Alembic из ini
+                                        
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Подменяем sqlalchemy.url в конфиге на DATABASE_URL из settings
+                                                                
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-# Metadata моделей для поддержки autogenerate
+                                             
 target_metadata = Base.metadata
 
-# Прочие опции из ini при необходимости можно получать через config.get_main_option(...)
+                                                                                        
 
 
 def run_migrations_offline() -> None:

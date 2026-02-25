@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.api import deps
-from app.models.user import User
-from app.models.chat import MemoryItem
-from app.repositories.chat import MemoryRepository
-from app.schemas.memory import MemoryCreate, MemoryOut, MemoryUpdate
+from app.features.users.models import User
+from app.features.memory.models import MemoryItem
+from app.features.memory.repository import MemoryRepository
+from app.features.memory.schemas import MemoryCreate, MemoryOut, MemoryUpdate
 from app.core.exceptions import EntityNotFoundException
 
 

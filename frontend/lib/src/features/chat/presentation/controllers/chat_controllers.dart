@@ -62,7 +62,7 @@ class ChatLessonsController extends FamilyAsyncNotifier<List<ChatLearningLessonE
     state = await AsyncValue.guard(() => ref.read(chatLearningRepositoryProvider).listLessons(sessionId));
   }
 
-  Future<ChatLearningLessonEntity> generate({int turnWindow = 40, String generationMode = 'balanced'}) async {
+  Future<ChatLearningLessonEntity> generate({int turnWindow = 80, String generationMode = 'balanced'}) async {
     final created = await ref
         .read(chatLearningRepositoryProvider)
         .generateLesson(sessionId, turnWindow: turnWindow, generationMode: generationMode);

@@ -28,4 +28,19 @@ class AuthRemoteDataSource {
     final json = await _client.patchMap(ApiEndpoints.usersMe, data: payload);
     return UserDto.fromJson(json);
   }
+
+  Future<AuthSessionDto> refresh({required String refreshToken}) async {
+    final json = await _client.postMap(
+      ApiEndpoints.authRefresh,
+      data: {'refresh_token': refreshToken},
+    );
+    return AuthSessionDto.fromJson(json);
+  }
+
+  Future<void> logout({required String refreshToken}) async {
+    await _client.postMap(
+      ApiEndpoints.authLogout,
+      data: {'refresh_token': refreshToken},
+    );
+  }
 }

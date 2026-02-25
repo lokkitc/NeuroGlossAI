@@ -2,7 +2,7 @@ from typing import List, Callable, Any, Dict
 from dataclasses import dataclass
 from uuid import UUID
 
-# --- События ---
+                 
 @dataclass
 class Event:
     pass
@@ -14,12 +14,12 @@ class LevelCompletedEvent(Event):
     xp_earned: int
     stars: int
 
-# --- Интерфейс Наблюдателя ---
+                               
 class EventListener:
     async def handle(self, event: Event, db: Any = None):
         raise NotImplementedError
 
-# --- Шина Событий (Субъект) ---
+                                
 class EventBus:
     def __init__(self):
         self._listeners: Dict[str, List[EventListener]] = {}
@@ -36,5 +36,5 @@ class EventBus:
             for listener in self._listeners[event_name]:
                 await listener.handle(event, db)
 
-# Глобальный экземпляр Шины Событий
+                                   
 event_bus = EventBus()

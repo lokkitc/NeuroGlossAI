@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.repositories.base import BaseRepository
+from app.features.common.db import BaseRepository
 from app.features.srs.models import Lexeme, UserLexeme, LessonLexeme
 
 

@@ -4,10 +4,10 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from app.api import deps
-from app.services.learning_service import LearningService
-from app.services.course_service import CourseService
-from app.models.user import User
-from app.schemas.generated_lesson import GeneratedLessonCreate, GeneratedLessonResponse
+from app.features.learning.service import LearningService
+from app.features.course.service import CourseService
+from app.features.users.models import User
+from app.features.lessons.schemas import GeneratedLessonCreate, GeneratedLessonResponse
 from app.core.exceptions import EntityNotFoundException, ServiceException
 from app.core.rate_limit import limiter
 
@@ -89,7 +89,7 @@ async def complete_lesson(
     if not lesson:
         raise EntityNotFoundException(entity_name="Lesson", entity_id=id)
     
-    # В будущем мы могли бы пометить урок как завершенный в БД здесь.
+                                                                     
     return {"status": "success", "message": "Lesson completed"}
 
 

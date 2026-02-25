@@ -5,7 +5,7 @@ abstract class ChatLearningRepository {
 
   Future<ChatLearningLessonEntity> generateLesson(
     String sessionId, {
-    int turnWindow = 40,
+    int turnWindow = 80,
     String generationMode = 'balanced',
   });
 }

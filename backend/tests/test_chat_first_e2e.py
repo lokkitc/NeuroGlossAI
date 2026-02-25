@@ -33,7 +33,7 @@ async def test_chat_first_generates_grounded_lesson_and_course(async_client: Asy
     )
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Create a character
+                        
     ch = await async_client.post(
         "/api/v1/characters/me",
         headers=headers,
@@ -51,7 +51,7 @@ async def test_chat_first_generates_grounded_lesson_and_course(async_client: Asy
     assert ch.status_code == 200, ch.text
     character_id = ch.json()["id"]
 
-    # Create chat session
+                         
     sess = await async_client.post(
         "/api/v1/chat/sessions",
         headers=headers,
@@ -60,7 +60,7 @@ async def test_chat_first_generates_grounded_lesson_and_course(async_client: Asy
     assert sess.status_code == 200, sess.text
     session_id = sess.json()["id"]
 
-    # Send 10 user messages with exact substrings expected by MockLLMProvider grounding.
+                                                                                        
     user_lines = [
         "I bought an apple.",
         "I need coffee.",
@@ -82,7 +82,7 @@ async def test_chat_first_generates_grounded_lesson_and_course(async_client: Asy
         )
         assert turn.status_code == 200, turn.text
 
-    # Lesson should appear (auto) OR can be manually forced; we do a manual call to avoid timing/cadence coupling.
+                                                                                                                  
     gen = await async_client.post(
         f"/api/v1/chat/sessions/{session_id}/learning/lessons",
         headers=headers,
@@ -95,7 +95,7 @@ async def test_chat_first_generates_grounded_lesson_and_course(async_client: Asy
     assert lesson["source_turn_to"] >= lesson["source_turn_from"]
     assert lesson["quality_status"] == "ok"
 
-    # Verify lesson list
+                        
     lst = await async_client.get(
         f"/api/v1/chat/sessions/{session_id}/learning/lessons",
         headers=headers,
@@ -114,7 +114,7 @@ async def test_chat_learning_rejects_ungrounded_output(async_client: AsyncClient
     )
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Create a character
+                        
     ch = await async_client.post(
         "/api/v1/characters/me",
         headers=headers,
@@ -140,7 +140,7 @@ async def test_chat_learning_rejects_ungrounded_output(async_client: AsyncClient
     assert sess.status_code == 200, sess.text
     session_id = sess.json()["id"]
 
-    # Put some chat content (but not matching the bad provider quotes)
+                                                                      
     await async_client.post(
         f"/api/v1/chat/sessions/{session_id}/turn",
         headers=headers,
@@ -182,5 +182,5 @@ async def test_chat_learning_rejects_ungrounded_output(async_client: AsyncClient
         json={"turn_window": 40, "generation_mode": "balanced"},
     )
 
-    # ServiceException is mapped to 503
+                                       
     assert gen.status_code == 503, gen.text

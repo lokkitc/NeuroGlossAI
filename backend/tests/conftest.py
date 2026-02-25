@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Импорты должны работать при запуске из разных директорий
+                                                          
 try:
     from app.main import app
     from app.api.deps import get_db
@@ -29,7 +29,7 @@ except ImportError:
     from app.models.base import Base
     from app.services.ai_service import ai_service
 
-# Используем in-memory SQLite для тестов
+                                        
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 engine = create_async_engine(
@@ -71,7 +71,7 @@ def normal_user_token_headers(async_client):
     Так как для register/login нужны async вызовы, эту логику чаще проще держать внутри самих тестов
     или выделять в отдельную async-фикстуру.
     """
-    return {}  # Тесты сами пройдут auth-flow при необходимости
+    return {}                                                  
 
-# Не используем autouse mock, т.к. разным тестам нужны разные моки (Path vs Lesson).
-# Тесты объявляют свои mock-фикстуры.
+                                                                                    
+                                     

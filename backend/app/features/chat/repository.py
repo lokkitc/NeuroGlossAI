@@ -3,7 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.features.chat.models import ChatSession, ChatTurn, ChatSessionSummary, ModerationEvent
-from app.repositories.base import BaseRepository
+from app.features.common.db import BaseRepository
 from app.features.memory.repository import MemoryRepository
 
 

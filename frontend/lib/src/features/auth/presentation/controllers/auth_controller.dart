@@ -69,6 +69,10 @@ class AuthController extends AsyncNotifier<AuthState> {
     String? uiTheme,
     String? assistantTone,
     int? assistantVerbosity,
+    Map<String, dynamic>? preferences,
+    String? targetLanguage,
+    String? nativeLanguage,
+    List<String>? interests,
   }) async {
     final current = state.valueOrNull;
     if (current == null || !current.isAuthenticated) return;
@@ -85,6 +89,10 @@ class AuthController extends AsyncNotifier<AuthState> {
             uiTheme: uiTheme,
             assistantTone: assistantTone,
             assistantVerbosity: assistantVerbosity,
+            preferences: preferences,
+            targetLanguage: targetLanguage,
+            nativeLanguage: nativeLanguage,
+            interests: interests,
           );
       _streamController.add(null);
       return AuthState(isAuthenticated: true, user: user);

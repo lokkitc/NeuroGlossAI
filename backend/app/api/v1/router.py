@@ -9,15 +9,15 @@ api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 
 if settings.ENABLE_LEGACY_PATH:
-    api_router.include_router(path.router, prefix="/path", tags=["path"])  # legacy
+    api_router.include_router(path.router, prefix="/path", tags=["path"])          
 if settings.ENABLE_LEGACY_LESSONS:
-    api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])  # legacy
+    api_router.include_router(lessons.router, prefix="/lessons", tags=["lessons"])          
 if settings.ENABLE_LEGACY_VOCABULARY:
-    api_router.include_router(vocabulary.router, prefix="/vocabulary", tags=["vocabulary"])  # legacy
+    api_router.include_router(vocabulary.router, prefix="/vocabulary", tags=["vocabulary"])          
 if settings.ENABLE_LEGACY_ROLEPLAY:
-    api_router.include_router(roleplay.router, prefix="/roleplay", tags=["roleplay"])  # legacy
+    api_router.include_router(roleplay.router, prefix="/roleplay", tags=["roleplay"])          
 if settings.ENABLE_LEGACY_GAMIFICATION:
-    api_router.include_router(gamification.router, prefix="/gamification", tags=["gamification"])  # legacy
+    api_router.include_router(gamification.router, prefix="/gamification", tags=["gamification"])          
 if settings.ENABLE_LEGACY_ADMIN:
     api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 
@@ -25,4 +25,4 @@ api_router.include_router(characters.router, prefix="/characters", tags=["charac
 api_router.include_router(rooms.router, prefix="/rooms", tags=["rooms"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 api_router.include_router(memory.router, prefix="/memory", tags=["memory"])
-api_router.include_router(chat_learning.router, prefix="/chat", tags=["chat_learning"])
+api_router.include_router(chat_learning.router, prefix="/chat-learning", tags=["chat_learning"])

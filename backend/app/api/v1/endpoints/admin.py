@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
-from app.models.user import User
-from app.services.admin_service import AdminService
+from app.features.users.models import User
+from app.features.admin.service import AdminService
 from uuid import UUID
 
 

@@ -39,12 +39,12 @@ void setupLocator(Env env) {
         ),
       );
 
-      dio.interceptors.add(AuthTokenInterceptor(sl<TokenStorage>()));
+      dio.interceptors.add(AuthTokenInterceptor(dio, sl<TokenStorage>()));
       if (env.logNetwork) {
         dio.interceptors.add(
           PrettyDioLogger(
-            requestHeader: true,
-            requestBody: true,
+            requestHeader: false,
+            requestBody: false,
             responseHeader: false,
             responseBody: true,
             compact: true,

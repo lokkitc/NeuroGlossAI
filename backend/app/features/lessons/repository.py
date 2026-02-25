@@ -4,8 +4,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.repositories.base import BaseRepository
-from app.models.generated_content import GeneratedLesson, GeneratedVocabularyItem
+from app.features.common.db import BaseRepository
+from app.features.lessons.models import GeneratedLesson, GeneratedVocabularyItem
 
 
 class GeneratedLessonRepository(BaseRepository[GeneratedLesson]):

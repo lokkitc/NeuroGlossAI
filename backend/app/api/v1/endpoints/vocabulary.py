@@ -2,9 +2,9 @@ from typing import Any, List
 from fastapi import APIRouter, Depends
 
 from app.api import deps
-from app.models.user import User
-from app.schemas.vocabulary import VocabularyReviewRequest, VocabularyItemResponse
-from app.services.learning_service import LearningService
+from app.features.users.models import User
+from app.features.vocabulary.schemas import VocabularyReviewRequest, VocabularyItemResponse
+from app.features.learning.service import LearningService
 from app.core.exceptions import EntityNotFoundException
 
 router = APIRouter()

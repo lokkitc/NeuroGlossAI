@@ -19,24 +19,24 @@ class MemoryItem(Base):
 
     owner_user_id = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    # Optional scope: per character or per room. If none -> global for user.
+                                                                            
     character_id = Column(GUID, ForeignKey("characters.id", ondelete="CASCADE"), nullable=True)
     room_id = Column(GUID, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=True)
 
-    # Optional origin session
+                             
     session_id = Column(GUID, ForeignKey("chat_sessions.id", ondelete="SET NULL"), nullable=True)
 
-    # Visible memory fields
+                           
     title = Column(String, nullable=False, default="")
     content = Column(Text, nullable=False, default="")
 
-    # If pinned: always included in context
+                                           
     is_pinned = Column(Boolean, nullable=False, default=False)
 
-    # If disabled: memory is preserved but not used for generation
+                                                                  
     is_enabled = Column(Boolean, nullable=False, default=True)
 
-    # Optional tags, importance, etc.
+                                     
     tags = Column(JSON, nullable=True)
     importance = Column(Integer, nullable=False, default=0)
 

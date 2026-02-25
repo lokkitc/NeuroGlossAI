@@ -8,7 +8,7 @@ from app.core.ai.base import LLMProvider
 
 class MockLLMProvider(LLMProvider):
     async def generate_json(self, prompt: str) -> Dict[str, Any]:
-        # Chat-learning mini-lesson (grounded in chat quotes)
+                                                             
         if "Create a mini-lesson from the following chat" in prompt and "source_quote" in prompt and "sentence_source" in prompt:
             return {
                 "title": "Chat Mini Lesson",
@@ -78,7 +78,7 @@ class MockLLMProvider(LLMProvider):
                 ]
             }
 
-        # Ответ урока (под ограничения промпта по языкам, чтобы проходить валидацию)
+                                                                                    
         if "for Kazakh" in prompt or "Language: Kazakh" in prompt or "{target_language}" in prompt:
             return {
                 "text": "Mobile Legends — бұл МОБА ойыны. Сен батырды таңдайсың және командамен ойнайсың. Мақсат — қарсыластың базасын бұзу.",
@@ -138,7 +138,7 @@ class MockLLMProvider(LLMProvider):
                 ]
             }
 
-        # Дефолтный ответ урока (английский)
+                                            
         return {
             "text": "Mobile Legends is a MOBA game. You choose a hero and fight. The goal is to destroy the enemy base.",
             "vocabulary": [

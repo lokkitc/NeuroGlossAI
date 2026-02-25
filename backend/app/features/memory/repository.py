@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.features.memory.models import MemoryItem
-from app.repositories.base import BaseRepository
+from app.features.common.db import BaseRepository
 
 
 class MemoryRepository(BaseRepository[MemoryItem]):

@@ -2,7 +2,7 @@ from typing import Optional
 
 from sqlalchemy import select, or_
 
-from app.repositories.base import BaseRepository
+from app.features.common.db import BaseRepository
 from app.features.users.models import User
 
 

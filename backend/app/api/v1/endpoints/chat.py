@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.api import deps
-from app.models.user import User
-from app.schemas.chat import ChatSessionCreate, ChatSessionOut, ChatSessionDetail, ChatTurnCreate, ChatTurnResponse
-from app.services.chat_service import ChatService
+from app.features.users.models import User
+from app.features.chat.schemas import ChatSessionCreate, ChatSessionOut, ChatSessionDetail, ChatTurnCreate, ChatTurnResponse
+from app.features.chat.service import ChatService
 from app.core.exceptions import EntityNotFoundException
 
 

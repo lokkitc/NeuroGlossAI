@@ -7,10 +7,10 @@ from pydantic import BaseModel
 from uuid import UUID
 
 from app.api import deps
-from app.models.user import User
-from app.schemas.course import ActiveCourseResponse, CourseGenerateRequest, ProgressUpdateRequest
-from app.services.course_service import CourseService
-from app.services.learning_service import LearningService
+from app.features.users.models import User
+from app.features.course.schemas import ActiveCourseResponse, CourseGenerateRequest, ProgressUpdateRequest
+from app.features.course.service import CourseService
+from app.features.learning.service import LearningService
 from app.core.exceptions import EntityNotFoundException, ServiceException
 from app.core.rate_limit import limiter
 
@@ -38,11 +38,11 @@ class FullCourseGenerationRequest(BaseModel):
 
 class RetryLessonsRequest(BaseModel):
     level_template_ids: List[str] = []
-    # Если задано, используется для регенерации
+                                               
     level: str = "A1"
     topic_by_level_template_id: Optional[Dict[str, str]] = None
     sleep_seconds: float = 0.0
-    mode: str = "full"  # полный | основа | упражнения
+    mode: str = "full"                                
     generation_mode: str = "balanced"
 
 
@@ -146,7 +146,7 @@ async def generate_full_course(
     if not course:
         raise EntityNotFoundException(entity_name="CourseTemplate", entity_id=enrollment.course_template_id)
 
-    # Возвращаем: активный курс + сгенерированные уроки
+                                                       
     active = await path_service.get_active_course_view(current_user)
 
     lesson_targets: list[dict] = []
@@ -196,7 +196,7 @@ async def generate_full_course(
                 needs_review_topics.append({"topic": topic, "reason": "exercises_unavailable"})
 
             prior_topics.append(topic)
-            # Собираем использованные слова, чтобы снижать повторения между уроками
+                                                                                   
             for item in getattr(lesson, "vocabulary_items", []) or []:
                 word = getattr(item, "word", None)
                 if word:
@@ -205,8 +205,8 @@ async def generate_full_course(
             error_text = str(e)
             failed_topics.append({"topic": topic, "error": error_text})
 
-            # Если провайдер исчерпал дневные лимиты, он может попросить повтор через много минут.
-            # В этом случае останавливаем генерацию остальных тем, чтобы не тратить запросы.
+                                                                                                  
+                                                                                            
             match = re.search(r"retry_after_seconds=([0-9]+)", error_text)
             if match:
                 try:
@@ -281,7 +281,7 @@ async def retry_lessons(
                     enrollment.id, level_template_uuid
                 )
                 if existing is None:
-                    # Если урока ещё нет — откатываемся к полной генерации.
+                                                                           
                     lesson = await learning_service.create_generated_lesson_from_ai(
                         enrollment=enrollment,
                         user=current_user,
@@ -300,7 +300,7 @@ async def retry_lessons(
                         generation_mode=generation_mode,
                     )
                     regenerated.append(lesson)
-            else:  # exercises
+            else:             
                 existing = await learning_service.generated_repo.get_by_enrollment_and_level(
                     enrollment.id, level_template_uuid
                 )

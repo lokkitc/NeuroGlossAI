@@ -8,7 +8,7 @@ import asyncio
 import os
 import sys
 
-# Добавляем текущую директорию в sys.path, чтобы импортировать модули приложения
+                                                                                
 sys.path.append(os.getcwd())
 
 from app.core.config import settings

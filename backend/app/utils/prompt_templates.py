@@ -42,6 +42,56 @@ Output JSON format:
 }}"""
 
 
+CHAT_LEARNING_LESSON_TEMPLATE = """Create a mini-lesson from the following chat. Focus ONLY on vocabulary/phrases that appeared in the chat. Do not correct the user, do not grade. Keep it fun and grounded in the conversation.
+CRITICAL: Do NOT invent phrases, examples, or facts that are not present in the chat.
+Every vocabulary item MUST include an exact quote from the chat where it appears.
+Every exercise MUST include an exact sentence_source substring copied from the chat.
+Output ONLY valid JSON with keys: title, topic, text, vocabulary, exercises.
+
+JSON schema:
+{{
+  "title": string,
+  "topic": string,
+  "text": string,
+  "vocabulary": [
+    {{"phrase": string, "meaning": string, "source_quote": string, "example_quote": string}}
+  ],
+  "exercises": [
+    {{"type": "quiz"|"match"|"fill_blank"|"scramble", "sentence_source": string, "targets": [string], ...}}
+  ]
+}}
+
+Rules:
+- vocabulary items must be phrases or words that appeared verbatim in the chat
+- 6-10 vocabulary items
+- source_quote and example_quote MUST be exact substrings from the chat
+- exercises must be solvable using only the chat and the vocabulary list
+- sentence_source MUST be an exact substring from the chat
+
+CHAT:
+{chat}
+"""
+
+
+CHAT_SESSION_SUMMARY_TEMPLATE = """Summarize the conversation so far into a compact, factual memory that helps continue the story. Keep names, relationships, goals, conflicts, and any promises. Do not add new facts.
+Output plain text only.
+
+PREVIOUS SUMMARY (may be empty):
+{previous_summary}
+
+NEW DIALOGUE:
+{dialogue}
+"""
+
+
+ROOM_CHAT_TURN_JSON_TEMPLATE = """You are generating the next multi-character turn. Follow the SYSTEM rules below.
+
+{transcript}
+
+IMPORTANT: Output ONLY valid JSON: {{"speaker": string, "message": string}}.
+"""
+
+
 VOCAB_FROM_TEXT_TEMPLATE = """Extract vocabulary for a {target_language} lesson text.
 
 Native language: {native_language}

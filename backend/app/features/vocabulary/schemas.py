@@ -17,4 +17,4 @@ class VocabularyItemResponse(BaseModel):
 
 class VocabularyReviewRequest(BaseModel):
     vocabulary_id: UUID
-    rating: int  # 1-5
+    rating: int       

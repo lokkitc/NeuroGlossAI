@@ -1,5 +1,5 @@
 from app.core.events.base import EventListener, LevelCompletedEvent
-from app.repositories.user import UserRepository
+from app.features.users.repository import UserRepository
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,10 +15,10 @@ class XPListener(EventListener):
 
 class AchievementListener(EventListener):
     async def handle(self, event: LevelCompletedEvent, db):
-        # Заглушка логики достижений
+                                    
         if event.stars == 3:
             logger.info(
                 "[AchievementListener] User %s got 3 stars! Checking 'Perfectionist' achievement...",
                 event.user_id,
             )
-            # Здесь мы проверили бы/создали логику достижений
+                                                             

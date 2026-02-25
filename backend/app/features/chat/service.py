@@ -1,16 +1,17 @@
 import re
 import math
+import logging
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions import EntityNotFoundException, ServiceException
-from app.models.characters import RoomParticipant
+from app.features.rooms.models import RoomParticipant
 from app.features.chat.models import ChatSession, ChatTurn, ChatSessionSummary, ModerationEvent
 from app.features.memory.models import MemoryItem
-from app.repositories.character import CharacterRepository
-from app.repositories.room import RoomRepository, RoomParticipantRepository
+from app.features.characters.repository import CharacterRepository
+from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
 from app.features.chat.repository import (
     ChatSessionRepository,
     ChatTurnRepository,
@@ -19,8 +20,11 @@ from app.features.chat.repository import (
 )
 from app.features.memory.repository import MemoryRepository
 from app.features.ai.ai_service import ai_service
-from app.services.chat_learning_service import ChatLearningService
+from app.features.chat_learning.service import ChatLearningService
 from app.core.config import settings
+from app.utils.prompt_templates import CHAT_SESSION_SUMMARY_TEMPLATE
+
+logger = logging.getLogger(__name__)
 
 
 _SELF_HARM_RE = re.compile(r"(suicide|kill myself|self-harm|end my life)", re.IGNORECASE)
@@ -64,7 +68,7 @@ class ChatService:
         return sess
 
     async def _score_memory(self, memory: MemoryItem, query: str) -> float:
-        # Deprecated: kept for compatibility; BM25 is used in _select_relevant_memories.
+                                                                                        
         q = (query or "").lower().strip()
         if not q:
             return 0.0
@@ -76,7 +80,7 @@ class ChatService:
         if not isinstance(text, str):
             text = str(text or "")
         text = text.lower()
-        # Keep it dependency-free; good enough for RU/EN.
+                                                         
         tokens = re.findall(r"[a-zа-я0-9_]{2,}", text)
         return tokens
 
@@ -85,7 +89,7 @@ class ChatService:
         q_tokens = cls._tokenize(query)
         if not q_tokens:
             return []
-        # document frequencies
+                              
         df: dict[str, int] = {}
         doc_tfs: list[dict[str, int]] = []
         doc_lens: list[int] = []
@@ -105,7 +109,7 @@ class ChatService:
 
         def idf(t: str) -> float:
             n = df.get(t, 0)
-            # Standard BM25 idf with +1 smoothing.
+                                                  
             return math.log(1.0 + (N - n + 0.5) / (n + 0.5))
 
         scored: list[tuple[float, MemoryItem]] = []
@@ -119,7 +123,7 @@ class ChatService:
                     continue
                 denom = f + k1 * (1.0 - b + b * (dl / avgdl))
                 score += idf(t) * (f * (k1 + 1.0) / denom)
-            # Light boost for importance.
+                                         
             score += 0.15 * float(getattr(mem, "importance", 0) or 0)
             if score > 0:
                 scored.append((score, mem))
@@ -169,12 +173,9 @@ class ChatService:
                 name = f"CHAR({t.character_id})"
             history_lines.append(f"{name}: {t.content}")
 
-        prompt = (
-            "Summarize the conversation so far into a compact, factual memory that helps continue the story. "
-            "Keep names, relationships, goals, conflicts, and any promises. Do not add new facts. "
-            "Output plain text only.\n\n"
-            f"PREVIOUS SUMMARY (may be empty):\n{previous_summary}\n\n"
-            "NEW DIALOGUE:\n" + "\n".join(history_lines[-120:])
+        prompt = CHAT_SESSION_SUMMARY_TEMPLATE.format(
+            previous_summary=previous_summary,
+            dialogue="\n".join(history_lines[-120:]),
         )
 
         summary_text = await ai_service.provider.generate_text(prompt)
@@ -218,7 +219,7 @@ class ChatService:
         session: ChatSession,
         user_message: str,
     ):
-        # Deep context: last 80 turns + pinned + latest summary + relevant memories
+                                                                                   
         recent = await self.turns.list_recent(session.id, limit=80)
         pinned = await self.memories.list_pinned(
             session.owner_user_id,
@@ -237,7 +238,7 @@ class ChatService:
 
         system_parts: list[str] = []
 
-        # Character / room prompts
+                                  
         room_participants_by_name: dict[str, RoomParticipant] = {}
 
         if session.character_id:
@@ -251,7 +252,7 @@ class ChatService:
             room = await self.rooms.get_full(session.room_id)
             if not room:
                 raise EntityNotFoundException("Room", session.room_id)
-            # Strict JSON output so we can persist who spoke.
+                                                             
             system_parts.append(
                 "You are a multi-character roleplay director. Keep continuity, avoid repetition, and choose EXACTLY ONE character to speak per turn. "
                 "You MUST output ONLY valid JSON with keys: speaker, message. No markdown. No extra keys."
@@ -300,11 +301,11 @@ class ChatService:
         if not session or session.owner_user_id != owner_user_id:
             raise EntityNotFoundException("ChatSession", session_id)
 
-        # Guard against occasional IntegrityError on (session_id, turn_index) when multiple requests race.
+                                                                                                          
         last_integrity_error: Exception | None = None
         for _ in range(3):
             try:
-                # persist user turn
+                                   
                 next_idx = await self.sessions.next_turn_index(session_id)
                 user_turn = ChatTurn(session_id=session_id, turn_index=next_idx, role="user", content=user_message)
                 await self.turns.create(user_turn, commit=False)
@@ -328,7 +329,7 @@ class ChatService:
                     await self.turns.create(assistant_turn, commit=False)
                     assistant_turns.append(assistant_turn)
                 else:
-                    # Rooms: JSON response {speaker, message}
+                                                             
                     data = await ai_service.generate_room_chat_turn_json(db=self.db, messages=messages)
                     speaker = str(data.get("speaker") or "").strip()
                     message = str(data.get("message") or "").strip()
@@ -354,16 +355,16 @@ class ChatService:
                 for t in assistant_turns:
                     await self.db.refresh(t)
 
-                # Auto-generate a mini-lesson from chat every N user messages (best-effort).
+                                                                                            
                 try:
                     if bool(getattr(settings, "CHAT_LEARNING_ENABLED", True)):
                         every = int(getattr(settings, "CHAT_LEARNING_EVERY_USER_TURNS", 10) or 10)
-                        window = int(getattr(settings, "CHAT_LEARNING_TURN_WINDOW", 40) or 40)
+                        window = int(getattr(settings, "CHAT_LEARNING_TURN_WINDOW", 80) or 80)
                         every = max(1, min(every, 50))
                         window = max(10, min(window, 120))
 
                         last_at = int(getattr(session, "last_learning_lesson_at_turn", 0) or 0)
-                        # Turns are (usually) user+assistant pairs, so X user turns ~= 2X total turns.
+                                                                                                      
                         if (user_turn.turn_index - last_at) >= (every * 2):
                             await ChatLearningService(self.db).generate_lesson_for_session(
                                 owner_user_id=owner_user_id,
@@ -372,13 +373,13 @@ class ChatService:
                                 generation_mode="balanced",
                             )
                 except Exception:
-                    # Never break the chat flow due to learning generation.
+                                                                           
                     try:
                         await self.db.rollback()
                     except Exception:
                         pass
 
-                # maybe summarize
+                                 
                 try:
                     await self._maybe_summarize(session)
                 except Exception:
@@ -399,5 +400,19 @@ class ChatService:
                     await self.db.rollback()
                 except Exception:
                     pass
+            except Exception as e:
+                try:
+                    await self.db.rollback()
+                except Exception:
+                    pass
+
+                if isinstance(e, (EntityNotFoundException, ServiceException)):
+                    raise
+
+                logger.exception(
+                    "Unhandled error while generating chat turn (session_id=%s)",
+                    str(session_id),
+                )
+                raise ServiceException("Failed to generate chat turn")
 
         raise ServiceException(f"Failed to persist chat turns due to a concurrency conflict: {str(last_integrity_error)}")

@@ -6,8 +6,8 @@ from sqlalchemy import select
 from app.core import security
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.user import User
-from app.schemas.user import TokenData
+from app.features.users.models import User
+from app.features.users.schemas import TokenData
 from uuid import UUID
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
@@ -49,9 +49,9 @@ async def require_admin(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
 
-# --- Зависимости сервисов ---
-from app.services.learning_service import LearningService
-from app.services.course_service import CourseService
+                              
+from app.features.learning.service import LearningService
+from app.features.course.service import CourseService
 
 async def get_learning_service(db: AsyncSession = Depends(get_db)) -> LearningService:
     return LearningService(db)

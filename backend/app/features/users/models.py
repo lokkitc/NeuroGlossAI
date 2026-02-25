@@ -18,16 +18,16 @@ class User(Base):
 
     is_admin = Column(Boolean, nullable=False, default=False)
 
-    # Настройки языка (Текущий курс)
+                                    
     native_language = Column(String, default="Russian")
     target_language = Column(String, default="Kazakh")
 
-    # Геймификация
+                  
     xp = Column(Integer, default=0)
-    language_levels = Column(JSON, default=dict)  # {"Kazakh": "A1", "English": "B2"}
-    interests = Column(JSON, default=list)  # ["Mobile Legends", "Cooking"]
+    language_levels = Column(JSON, default=dict)                                     
+    interests = Column(JSON, default=list)                                 
 
-    # Профиль / персонализация
+                              
     avatar_url = Column(String, nullable=True)
     thumbnail_url = Column(String, nullable=True)
     banner_url = Column(String, nullable=True)
@@ -36,7 +36,7 @@ class User(Base):
     timezone = Column(String, nullable=True, default="UTC")
     ui_theme = Column(String, nullable=True, default="system")
 
-    # Настройки ассистента
+                          
     assistant_tone = Column(String, nullable=True, default="friendly")
     assistant_verbosity = Column(Integer, nullable=True, default=3)
     preferences = Column(JSON, default=dict)

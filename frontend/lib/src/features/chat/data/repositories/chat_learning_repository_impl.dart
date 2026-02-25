@@ -16,7 +16,7 @@ class ChatLearningRepositoryImpl implements ChatLearningRepository {
   }
 
   @override
-  Future<ChatLearningLessonEntity> generateLesson(String sessionId, {int turnWindow = 40, String generationMode = 'balanced'}) async {
+  Future<ChatLearningLessonEntity> generateLesson(String sessionId, {int turnWindow = 80, String generationMode = 'balanced'}) async {
     final json = await _remote.generateLesson(sessionId, turnWindow: turnWindow, generationMode: generationMode);
     return ChatLearningMapper.toEntity(ChatLearningLessonDto.fromJson(json));
   }

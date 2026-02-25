@@ -70,6 +70,15 @@ class UserResponse(UserBase):
     assistant_verbosity: Optional[int] = None
     preferences: Dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("preferences", mode="before")
+    @classmethod
+    def _coerce_preferences(cls, v):
+        if v is None:
+            return {}
+        if isinstance(v, dict):
+            return v
+        return {}
+
     class Config:
         from_attributes = True
 

@@ -19,8 +19,8 @@ class GroqProvider(LLMProvider):
     def __init__(self, model: str = "llama-3.3-70b-versatile"):
         self.api_key = settings.GROQ_API_KEY
         if not self.api_key:
-            # Для unit‑тестов мы часто мокируем клиент и не нуждаемся в реальном ключе.
-            # В проде запросы всё равно упадут, если ключ неверный, но warning оставляем явным.
+                                                                                       
+                                                                                               
             logger.warning("GROQ_API_KEY is not set.")
         self.client = AsyncGroq(api_key=self.api_key or "DUMMY")
         
@@ -34,13 +34,13 @@ class GroqProvider(LLMProvider):
     async def generate_json(self, prompt: str, *, temperature: float | None = None) -> Dict[str, Any]:
         await self._ensure_client()
         
-        # Убедитесь, что модель знает, что она должна выдавать джейсон
+                                                                      
         if "JSON" not in prompt:
              prompt += "\n\nIMPORTANT: Output ONLY valid JSON."
 
         def _extract_json_object(text: str) -> str:
-            # Пытаемся извлечь первый джейсон‑объект из ответа модели.
-            # Это запасной режим для случаев, когда строгий режим не сработал.
+                                                                      
+                                                                              
             start = text.find("{")
             end = text.rfind("}")
             if start == -1 or end == -1 or end <= start:
@@ -48,8 +48,8 @@ class GroqProvider(LLMProvider):
             return text[start : end + 1]
 
         timeout = float(getattr(settings, "AI_REQUEST_TIMEOUT_SECONDS", 30) or 30)
-        # Groq SDK may internally retry with backoff on 429. If we wrap it with a strict wait_for(timeout)
-        # we can cancel the request mid-retry. Give a larger total wall-clock window.
+                                                                                                          
+                                                                                     
         total_timeout = max(timeout, timeout * 4.0)
         max_chars = int(getattr(settings, "AI_MAX_RESPONSE_CHARS", 200000) or 200000)
 
@@ -75,8 +75,8 @@ class GroqProvider(LLMProvider):
             return json.loads(content)
         except Exception as e:
             message = str(e)
-            # Грок иногда отклоняет строгий режим с 400 json_validate_failed.
-            # Запасной режим: просим модель без response_format и извлекаем джейсон из текста.
+                                                                             
+                                                                                              
             is_json_validate_failed = (
                 "json_validate_failed" in message
                 or ("error code: 400" in message.lower() and "json" in message.lower())

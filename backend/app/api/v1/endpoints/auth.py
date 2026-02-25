@@ -3,16 +3,17 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
+import uuid
 
 from app.api import deps
 from app.core import security
-from app.services.auth_service import AuthService
-from app.schemas.user import UserCreate, UserResponse, Token, RefreshTokenRequest
-from app.models.user import User
+from app.features.auth.service import AuthService
+from app.features.users.schemas import UserCreate, UserResponse, Token, RefreshTokenRequest
+from app.features.users.models import User
 from app.core.rate_limit import limiter
 from app.core.config import settings
-from app.repositories.refresh_token import RefreshTokenRepository
-from app.models.refresh_token import RefreshToken
+from app.features.auth.repository import RefreshTokenRepository
+from app.features.auth.models import RefreshToken
 
 router = APIRouter()
 
@@ -46,9 +47,8 @@ async def login(
         )
     access_token = security.create_access_token(subject=user.id)
 
-    # Сессия и устройство трекинг
-    session_id = str(getattr(user, "id", ""))  
-    session_id = security.create_refresh_token()  
+                                 
+    session_id = request.headers.get("X-Session-Id") or request.headers.get("X-Device-Id") or str(uuid.uuid4())
     device_id = request.headers.get("X-Device-Id")
 
     refresh_token = security.create_refresh_token()
@@ -57,7 +57,7 @@ async def login(
 
     repo = RefreshTokenRepository(db)
 
-    # Каждый раз при входе удаляем старые токены
+                                                
     await repo.revoke_active_for_session(user_id=user.id, session_id=session_id)
     await repo.create(
         RefreshToken(
@@ -71,7 +71,7 @@ async def login(
         commit=True,
     )
 
-    # Ограничиваем количество активных сессий
+                                             
     await repo.enforce_active_session_limit(user_id=user.id, limit=10, now=datetime.utcnow())
     await db.commit()
 
@@ -86,18 +86,23 @@ async def refresh_access_token(
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     now = datetime.utcnow()
-    token_hash = security.hash_refresh_token(body.refresh_token)
     repo = RefreshTokenRepository(db)
+    token_hash = security.hash_refresh_token(body.refresh_token)
+    legacy_hash = security.legacy_hash_refresh_token(body.refresh_token)
     rt = await repo.get_active_by_hash(token_hash=token_hash, now=now)
     if rt is None:
-        # Перезагрузка: если токен существует, но отозван/просрочен -> предполагаем утечку и отменяем все для пользователя.
+        rt = await repo.get_active_by_hash(token_hash=legacy_hash, now=now)
+    if rt is None:
+                                                                                                                           
         any_rt = await repo.get_by_hash(token_hash=token_hash)
+        if any_rt is None:
+            any_rt = await repo.get_by_hash(token_hash=legacy_hash)
         if any_rt is not None:
             await repo.revoke_all_for_user(user_id=any_rt.user_id)
             await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-    # Обновляем refresh token
+                             
     new_refresh = security.create_refresh_token()
     new_hash = security.hash_refresh_token(new_refresh)
     new_expires_at = now + timedelta(days=int(settings.REFRESH_TOKEN_EXPIRE_DAYS or 30))
@@ -118,7 +123,7 @@ async def refresh_access_token(
     await db.commit()
 
     access_token = security.create_access_token(subject=rt.user_id)
-    # Ограничиваем количество активных сессий
+                                             
     await repo.enforce_active_session_limit(user_id=rt.user_id, limit=10, now=now)
     await db.commit()
     return {"access_token": access_token, "refresh_token": new_refresh, "token_type": "bearer", "session_id": rt.session_id}
@@ -132,9 +137,12 @@ async def logout(
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     now = datetime.utcnow()
-    token_hash = security.hash_refresh_token(body.refresh_token)
     repo = RefreshTokenRepository(db)
+    token_hash = security.hash_refresh_token(body.refresh_token)
+    legacy_hash = security.legacy_hash_refresh_token(body.refresh_token)
     rt = await repo.get_active_by_hash(token_hash=token_hash, now=now)
+    if rt is None:
+        rt = await repo.get_active_by_hash(token_hash=legacy_hash, now=now)
     if rt is None:
         return {"status": "ok"}
 
@@ -164,7 +172,7 @@ async def cleanup_refresh_tokens(
     current_user: User = Depends(deps.get_current_user),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    # Лучая попытка поддержания чистоты
+                                       
     now = datetime.utcnow()
     repo = RefreshTokenRepository(db)
     deleted = await repo.delete_expired(now=now)

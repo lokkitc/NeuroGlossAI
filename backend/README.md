@@ -1,17 +1,20 @@
-# NeuroGlossAI Backend — документация (от А до Я)
+# NeuroGlossAI Backend — документация (chat-first)
 
 ## 1. Назначение
 
 Backend — это API и бизнес‑логика NeuroGlossAI.
 
-Основные возможности:
-- аутентификация (JWT)
-- генерация курса по интересам (курс = шаблоны + запись прохождения пользователя)
-- генерация уроков (текст, словарь, упражнения) через модель
-- повторение словаря (нормализованный словарь + интервальные повторения)
-- roleplay‑чат
-- события (начисление опыта/достижения)
-- аналитика вызовов модели (события генерации) и кэш ответов
+Основная цель продукта (production):
+- **ИИ‑собеседник** (чат‑сессии, персонажи, комнаты)
+- **долгая память** (Memory Wallet: pinned + relevant memory)
+
+Побочные возможности (sidecar, опционально):
+- **lessons-from-chat**: генерация мини‑уроков из диалога (строго grounded в тексте диалога)
+- SRS/повторение (Lexeme/UserLexeme) на основе извлечённого словаря
+
+Legacy (Duolingo‑style) endpoints:
+- /path, /lessons, /vocabulary, /roleplay, /gamification
+- подключаются **только** через feature flags в `Settings` (см. ниже)
 
 ## 2. Технологии
 
@@ -33,7 +36,7 @@ backend/
       deps.py                    # зависимости FastAPI (get_db, сервисы, current_user)
       v1/
         router.py                # подключение роутеров
-        endpoints/               # /auth /users /path /lessons /vocabulary /roleplay /gamification
+        endpoints/               # /auth /users /chat /characters /rooms /memory /chat_learning (+ legacy if enabled)
     core/
       config.py                  # Settings (ENV, DATABASE_URL, SECRET_KEY, GROQ_API_KEY и т.д.)
       database.py                # async engine + session factory + get_db
@@ -46,10 +49,11 @@ backend/
       events/
         base.py                  # EventBus + события
         listeners.py             # XPListener, AchievementListener
-    models/                      # SQLAlchemy модели
-    repositories/                # доступ к данным
-    schemas/                     # Pydantic схемы
-    services/                    # бизнес‑логика (курс, обучение, модель, авторизация)
+    features/                    # feature-based модули (каноничный код)
+      auth/ users/ chat/ characters/ rooms/ memory/
+      ai/ course/ learning/ lessons/ vocabulary/ srs/
+      chat_learning/ user_progress/ admin/ topic_retrieval/
+    models/                      # core ORM infra (Base, custom types)
     utils/
       prompt_templates.py        # шаблоны промптов
     main.py                      # создание приложения и middleware
@@ -140,6 +144,19 @@ CORS:
 Важно:
 - В `production` запрещён `*` в CORS (защита)
 
+Chat learning (sidecar):
+- **CHAT_LEARNING_ENABLED** — включает автогенерацию lessons-from-chat (лучше держать выключенным, если чат — единственный флоу)
+- **CHAT_LEARNING_EVERY_USER_TURNS** — период автогенерации (в пользовательских ходах)
+- **CHAT_LEARNING_TURN_WINDOW** — окно диалога для урока (по умолчанию 80)
+
+Feature flags (legacy endpoints):
+- **ENABLE_LEGACY_PATH**
+- **ENABLE_LEGACY_LESSONS**
+- **ENABLE_LEGACY_VOCABULARY**
+- **ENABLE_LEGACY_ROLEPLAY**
+- **ENABLE_LEGACY_GAMIFICATION**
+- **ENABLE_LEGACY_ADMIN**
+
 ## 7. База данных и модели
 
 ### 7.1. Основная идея
@@ -214,7 +231,7 @@ alembic downgrade -1
 
 ## 10. Сервисы и поток данных
 
-### 10.1. CourseService (`app/services/course_service.py`)
+### 10.1. CourseService (`app/features/course/service.py`)
 Отвечает за:
 - генерацию CourseTemplate через модель
 - создание Enrollment
@@ -222,7 +239,7 @@ alembic downgrade -1
 - выдачу «active course view»
 - обновление прогресса и публикацию событий
 
-### 10.2. LearningService (`app/services/learning_service.py`)
+### 10.2. LearningService (`app/features/learning/service.py`)
 Отвечает за:
 - создание GeneratedLesson по уровню курса
 - запись GeneratedVocabularyItem
@@ -231,7 +248,7 @@ alembic downgrade -1
 - обработку review слова
 - best‑effort запись `ai_generation_events`
 
-### 10.3. AIService (`app/services/ai_service.py`)
+### 10.3. AIService (`app/features/ai/ai_service.py`)
 Отвечает за:
 - генерацию основы урока (текст + словарь)
 - генерацию упражнений

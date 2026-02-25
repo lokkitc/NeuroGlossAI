@@ -5,12 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.api import deps
-from app.models.user import User
+from app.features.users.models import User
 from app.core.exceptions import EntityNotFoundException
-from app.repositories.chat import ChatSessionRepository
-from app.repositories.chat_learning import ChatLearningLessonRepository
-from app.schemas.chat_learning import ChatLearningLessonOut, ChatLearningGenerateRequest
-from app.services.chat_learning_service import ChatLearningService
+from app.features.chat.repository import ChatSessionRepository
+from app.features.chat_learning.repository import ChatLearningLessonRepository
+from app.features.chat_learning.schemas import ChatLearningLessonOut, ChatLearningGenerateRequest
+from app.features.chat_learning.service import ChatLearningService
 
 
 router = APIRouter()

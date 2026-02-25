@@ -14,18 +14,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.models.user import User
-from app.models.enrollment import Enrollment
-from app.models.generated_content import GeneratedLesson
-from app.models.srs import Lexeme, UserLexeme, LessonLexeme
-from app.models.generated_content import GeneratedVocabularyItem
-from app.schemas.vocabulary import VocabularyReviewRequest
+from app.features.users.models import User
+from app.features.user_progress.models import Enrollment
+from app.features.lessons.models import GeneratedLesson
+from app.features.srs.models import Lexeme, UserLexeme, LessonLexeme
+from app.features.lessons.models import GeneratedVocabularyItem
+from app.features.vocabulary.schemas import VocabularyReviewRequest
 from app.features.ai.ai_service import ai_service, GenerationMode
-from app.repositories.ai_ops import AIIOpsRepository
-from app.repositories.generated_lesson import GeneratedLessonRepository
-from app.repositories.generated_vocabulary import GeneratedVocabularyRepository
-from app.repositories.srs import LexemeRepository, UserLexemeRepository, LessonLexemeRepository
-from app.services.factories import GeneratedLessonFactory
+from app.features.ai.repository import AIIOpsRepository
+from app.features.lessons.repository import GeneratedLessonRepository
+from app.features.lessons.generated_vocabulary_repository import GeneratedVocabularyRepository
+from app.features.srs.repository import LexemeRepository, UserLexemeRepository, LessonLexemeRepository
+from app.features.lessons.factories import GeneratedLessonFactory
 
 
 def _normalize_word(word: str) -> str:
@@ -57,7 +57,7 @@ class LearningService:
             return 0, datetime.utcnow()
 
         new_level = current_level + 1
-        # Простая схема интервальных повторений: 1, 3, 7, 14, 30 дней
+                                                                     
         intervals = {1: 1, 2: 3, 3: 7, 4: 14, 5: 30}
         days = intervals.get(new_level, 30)
         next_date = datetime.utcnow() + timedelta(days=days)
@@ -88,7 +88,7 @@ class LearningService:
         ai_data = None
         err: Exception | None = None
         try:
-            # Получаем последние 10 уроков для текущего курса
+                                                             
             recent_lessons = await self.generated_repo.get_by_enrollment(enrollment.id, skip=0, limit=10)
             opening_sentences: list[str] = []
             recent_exercise_types: list[str] = []
@@ -152,7 +152,7 @@ class LearningService:
                 except Exception:
                     pass
 
-        # Сохраняем диагностические поля генерации (по возможности) в сгенерированный урок.
+                                                                                           
         meta = ai_data.get("_meta") if isinstance(ai_data, dict) else None
 
         lesson, vocab_items = GeneratedLessonFactory.create_from_ai_response(
@@ -247,7 +247,7 @@ class LearningService:
         if isinstance(meta, dict) and meta.get("quality_status"):
             lesson.quality_status = str(meta.get("quality_status"))
 
-        # Добавляем диагностические поля
+                                        
         if isinstance(meta, dict) and meta.get("validation_errors"):
             existing_errs = lesson.validation_errors if isinstance(lesson.validation_errors, list) else []
             lesson.validation_errors = list(existing_errs) + list(meta.get("validation_errors") or [])
@@ -266,8 +266,8 @@ class LearningService:
         level: str,
         generation_mode: GenerationMode = "balanced",
     ) -> GeneratedLesson:
-        # Перегенерируем только текст + словарь, сохраняя ту же запись урока.
-        # Упражнения могут перестать соответствовать тексту, поэтому очищаем их и помечаем как требующие проверки.
+                                                                             
+                                                                                                                  
 
         topic = getattr(lesson, "topic_snapshot", None) or "regen_core"
 
@@ -311,10 +311,10 @@ class LearningService:
 
         meta = ai_core.get("_meta") if isinstance(ai_core, dict) else None
 
-        # Обновляем core поля
+                             
         lesson.content_text = str(ai_core.get("text") or "") if isinstance(ai_core, dict) else ""
 
-        # Заменяем элементы словаря
+                                   
         existing_items = list(getattr(lesson, "vocabulary_items", []) or [])
         for it in existing_items:
             self.db.delete(it)
@@ -332,7 +332,7 @@ class LearningService:
                 )
             )
 
-        # Очищаем упражнения и помечаем как требующие проверки; пользователь может вызвать регенерацию упражнений.
+                                                                                                                  
         lesson.exercises = []
         lesson.quality_status = "needs_review"
 
@@ -355,7 +355,7 @@ class LearningService:
         await self.db.commit()
         refreshed = await self.generated_repo.get_by_id_and_enrollment(lesson.id, lesson.enrollment_id)
 
-        # Обновляем связи нормализованного словаря (по возможности)
+                                                                   
         if refreshed is not None:
             await self._upsert_srs_from_generated_lesson(
                 generated_lesson=refreshed,
@@ -411,7 +411,7 @@ class LearningService:
                 )
                 any_updates = True
 
-            # Связываем строку словаря урока с каноническим идентификатором записи словаря пользователя.
+                                                                                                        
             if getattr(item, "user_lexeme_id", None) != user_lexeme.id:
                 item.user_lexeme_id = user_lexeme.id
                 self.db.add(item)
@@ -467,9 +467,9 @@ class LearningService:
         return out
 
     async def process_vocabulary_review(self, user_id: uuid.UUID, review_data: VocabularyReviewRequest) -> dict | None:
-        # Принимаем оба варианта:
-        # - нормализованный идентификатор записи словаря пользователя
-        # - идентификатор сгенерированного словаря, который приходит в ответе урока
+                                 
+                                                                     
+                                                                                   
         user_lexeme = await self.user_lexeme_repo.get_by_id_and_user(user_lexeme_id=review_data.vocabulary_id, user_id=user_id)
 
         if user_lexeme is None:
@@ -481,8 +481,8 @@ class LearningService:
             if not word:
                 return None
 
-            # Маппинг к нормализованному словарю (по возможности).
-            # Язык берём из связки урок -> enrollment -> course_template.
+                                                                  
+                                                                         
             normalized = _normalize_word(str(word))
 
             target_language = None
@@ -500,7 +500,7 @@ class LearningService:
                 target_language = None
 
             if not target_language:
-                # Fallback: используем текущий язык пользователя, если он задан.
+                                                                                
                 ures = await self.db.execute(select(User).where(User.id == user_id))
                 uobj = ures.scalars().first()
                 target_language = getattr(uobj, "target_language", None) if uobj is not None else None
