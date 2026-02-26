@@ -26,6 +26,22 @@ class Character(Base):
     system_prompt = Column(String, nullable=False, default="")
     style_prompt = Column(String, nullable=True)
 
+    avatar_url = Column(String, nullable=True)
+    thumbnail_url = Column(String, nullable=True)
+    banner_url = Column(String, nullable=True)
+
+    greeting = Column(String, nullable=True)
+
+    tags = Column(JSON, nullable=True)
+
+    voice_provider = Column(String, nullable=True)
+    voice_id = Column(String, nullable=True)
+    voice_settings = Column(JSON, nullable=True)
+
+    chat_settings = Column(JSON, nullable=True)
+
+    chat_theme_id = Column(GUID, ForeignKey("themes.id", ondelete="SET NULL"), nullable=True)
+
     is_public = Column(Boolean, nullable=False, default=False)
     is_nsfw = Column(Boolean, nullable=False, default=False)
 

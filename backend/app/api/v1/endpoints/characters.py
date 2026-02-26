@@ -51,6 +51,19 @@ async def create_character(
         description=body.description or "",
         system_prompt=body.system_prompt,
         style_prompt=body.style_prompt,
+
+        avatar_url=body.avatar_url,
+        thumbnail_url=body.thumbnail_url,
+        banner_url=body.banner_url,
+        greeting=body.greeting,
+        tags=body.tags,
+        voice_provider=body.voice_provider,
+        voice_id=body.voice_id,
+        voice_settings=body.voice_settings,
+        chat_settings=body.chat_settings,
+
+        chat_theme_id=body.chat_theme_id,
+
         is_public=bool(body.is_public),
         is_nsfw=bool(body.is_nsfw),
         settings=body.settings,

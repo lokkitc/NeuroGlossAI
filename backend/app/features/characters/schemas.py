@@ -8,6 +8,23 @@ class CharacterBase(BaseModel):
     description: str = ""
     system_prompt: str
     style_prompt: str | None = None
+
+    avatar_url: str | None = None
+    thumbnail_url: str | None = None
+    banner_url: str | None = None
+
+    greeting: str | None = None
+
+    tags: list[str] | None = None
+
+    voice_provider: str | None = None
+    voice_id: str | None = None
+    voice_settings: dict | None = None
+
+    chat_settings: dict | None = None
+
+    chat_theme_id: UUID | None = None
+
     is_public: bool = False
     is_nsfw: bool = False
     settings: dict | None = None
@@ -32,6 +49,21 @@ class CharacterUpdate(BaseModel):
     description: str | None = None
     system_prompt: str | None = None
     style_prompt: str | None = None
+
+    avatar_url: str | None = None
+    thumbnail_url: str | None = None
+    banner_url: str | None = None
+
+    greeting: str | None = None
+
+    tags: list[str] | None = None
+
+    voice_provider: str | None = None
+    voice_id: str | None = None
+    voice_settings: dict | None = None
+
+    chat_settings: dict | None = None
+
     is_public: bool | None = None
     is_nsfw: bool | None = None
     settings: dict | None = None

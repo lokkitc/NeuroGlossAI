@@ -41,6 +41,7 @@ class UserUpdate(BaseModel):
     bio: Optional[str] = None
     timezone: Optional[str] = None
     ui_theme: Optional[str] = None
+    selected_theme_id: Optional[UUID] = None
     assistant_tone: Optional[str] = None
     assistant_verbosity: Optional[int] = None
     preferences: Optional[Dict[str, Any]] = None
@@ -65,6 +66,7 @@ class UserResponse(UserBase):
     bio: Optional[str] = None
     timezone: Optional[str] = None
     ui_theme: Optional[str] = None
+    selected_theme_id: Optional[UUID] = None
 
     assistant_tone: Optional[str] = None
     assistant_verbosity: Optional[int] = None

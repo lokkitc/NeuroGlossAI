@@ -241,6 +241,8 @@ class ChatService:
                                   
         room_participants_by_name: dict[str, RoomParticipant] = {}
 
+        temperature: float | None = None
+
         if session.character_id:
             ch = await self.characters.get(session.character_id)
             if not ch:
@@ -248,6 +250,22 @@ class ChatService:
             system_parts.append(ch.system_prompt or "")
             if ch.style_prompt:
                 system_parts.append(ch.style_prompt)
+
+            if getattr(ch, "greeting", None):
+                system_parts.append(f"GREETING (use as initial tone, do not repeat verbatim every time):\n{ch.greeting}")
+
+            cs = getattr(ch, "chat_settings", None)
+            if isinstance(cs, dict):
+                t = cs.get("temperature")
+                try:
+                    if t is not None:
+                        temperature = float(t)
+                        if temperature < 0.0:
+                            temperature = 0.0
+                        if temperature > 2.0:
+                            temperature = 2.0
+                except Exception:
+                    temperature = None
         else:
             room = await self.rooms.get_full(session.room_id)
             if not room:
@@ -294,7 +312,7 @@ class ChatService:
                 messages.append({"role": "assistant", "content": t.content})
 
         messages.append({"role": "user", "content": user_message})
-        return messages, (pinned + relevant), room_participants_by_name
+        return messages, (pinned + relevant), room_participants_by_name, temperature
 
     async def generate_turn(self, *, owner_user_id, session_id, user_message: str) -> dict[str, Any]:
         session = await self.sessions.get(session_id)
@@ -312,13 +330,20 @@ class ChatService:
 
                 await self._moderate(owner_user_id=owner_user_id, session_id=session_id, turn_id=user_turn.id, content=user_message)
 
-                messages, used_mem, room_map = await self._build_messages_for_llm(session=session, user_message=user_message)
+                messages, used_mem, room_map, temperature = await self._build_messages_for_llm(
+                    session=session,
+                    user_message=user_message,
+                )
 
                 assistant_turns: list[ChatTurn] = []
                 next_idx2 = next_idx + 1
 
                 if session.character_id:
-                    assistant_text = await ai_service.generate_character_chat_turn(db=self.db, messages=messages)
+                    assistant_text = await ai_service.generate_character_chat_turn(
+                        db=self.db,
+                        messages=messages,
+                        temperature=temperature,
+                    )
                     assistant_turn = ChatTurn(
                         session_id=session_id,
                         turn_index=next_idx2,
@@ -330,7 +355,11 @@ class ChatService:
                     assistant_turns.append(assistant_turn)
                 else:
                                                              
-                    data = await ai_service.generate_room_chat_turn_json(db=self.db, messages=messages)
+                    data = await ai_service.generate_room_chat_turn_json(
+                        db=self.db,
+                        messages=messages,
+                        temperature=temperature,
+                    )
                     speaker = str(data.get("speaker") or "").strip()
                     message = str(data.get("message") or "").strip()
                     if not speaker or not message:

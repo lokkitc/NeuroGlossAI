@@ -93,11 +93,12 @@ class AIService:
         *,
         db: AsyncSession | None,
         messages: list[dict[str, str]],
+        temperature: float | None = None,
         generation_mode: str = "deep",
     ) -> str:
         started = time.monotonic()
         try:
-            text = await self.provider.generate_chat(messages)
+            text = await self.provider.generate_chat(messages, temperature=temperature)
             latency_ms = int((time.monotonic() - started) * 1000)
             await self._log_chat_event(
                 db=db,
@@ -155,6 +156,7 @@ class AIService:
         *,
         db: AsyncSession | None,
         messages: list[dict[str, str]],
+        temperature: float | None = None,
         generation_mode: str = "deep",
     ) -> dict[str, Any]:
         started = time.monotonic()
@@ -176,7 +178,7 @@ class AIService:
 
             prompt = ROOM_CHAT_TURN_JSON_TEMPLATE.format(transcript="\n\n".join(transcript_lines))
 
-            data = await self.provider.generate_json(prompt)
+            data = await self.provider.generate_json(prompt, temperature=temperature)
             latency_ms = int((time.monotonic() - started) * 1000)
             await self._log_chat_event(
                 db=db,

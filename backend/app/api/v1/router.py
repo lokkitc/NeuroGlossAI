@@ -1,6 +1,9 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import auth, lessons, vocabulary, roleplay, gamification, users, path, admin
 from app.api.v1.endpoints import characters, rooms, chat, memory, chat_learning
+from app.api.v1.endpoints import uploads
+from app.api.v1.endpoints import posts
+from app.api.v1.endpoints import themes
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -26,3 +29,6 @@ api_router.include_router(rooms.router, prefix="/rooms", tags=["rooms"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
 api_router.include_router(memory.router, prefix="/memory", tags=["memory"])
 api_router.include_router(chat_learning.router, prefix="/chat-learning", tags=["chat_learning"])
+api_router.include_router(uploads.router, prefix="/uploads", tags=["uploads"])
+api_router.include_router(posts.router, prefix="/posts", tags=["posts"])
+api_router.include_router(themes.router, prefix="/themes", tags=["themes"])

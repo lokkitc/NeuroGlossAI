@@ -197,6 +197,9 @@ async def update_user_me(
     if user_in.ui_theme is not None:
         current_user.ui_theme = user_in.ui_theme
 
+    if getattr(user_in, "selected_theme_id", None) is not None:
+        current_user.selected_theme_id = user_in.selected_theme_id
+
     if user_in.assistant_tone is not None:
         current_user.assistant_tone = user_in.assistant_tone
 

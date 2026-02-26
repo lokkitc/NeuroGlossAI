@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -35,6 +35,8 @@ class User(Base):
     bio = Column(String, nullable=True)
     timezone = Column(String, nullable=True, default="UTC")
     ui_theme = Column(String, nullable=True, default="system")
+
+    selected_theme_id = Column(GUID, ForeignKey("themes.id", ondelete="SET NULL"), nullable=True)
 
                           
     assistant_tone = Column(String, nullable=True, default="friendly")

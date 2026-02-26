@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     ENABLE_LEGACY_GAMIFICATION: bool = False
     ENABLE_LEGACY_ADMIN: bool = False
 
+    CLOUDINARY_CLOUD_NAME: str | None = None
+    CLOUDINARY_API_KEY: str | None = None
+    CLOUDINARY_API_SECRET: str | None = None
+    UPLOADS_ENABLED: bool = True
+    UPLOAD_MAX_BYTES: int = 5_000_000
+
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def _parse_cors_origins(cls, v):
