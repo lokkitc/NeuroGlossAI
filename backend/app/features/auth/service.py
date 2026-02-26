@@ -37,8 +37,11 @@ class AuthService:
             language_levels={},
         )
 
-        async with self.db.begin():
+        if self.db.in_transaction():
             await self.users.create(db_user)
+        else:
+            async with self.db.begin():
+                await self.users.create(db_user)
 
         await self.db.refresh(db_user)
         return db_user
@@ -59,7 +62,7 @@ class AuthService:
         refresh_hash = security.hash_refresh_token(refresh_token)
         expires_at = datetime.utcnow() + timedelta(days=int(settings.REFRESH_TOKEN_EXPIRE_DAYS or 30))
 
-        async with self.db.begin():
+        if self.db.in_transaction():
             await self.refresh_tokens.revoke_active_for_session(user_id=user.id, session_id=sid)
             await self.refresh_tokens.create(
                 RefreshToken(
@@ -72,6 +75,20 @@ class AuthService:
                 ),
             )
             await self.refresh_tokens.enforce_active_session_limit(user_id=user.id, limit=10, now=datetime.utcnow())
+        else:
+            async with self.db.begin():
+                await self.refresh_tokens.revoke_active_for_session(user_id=user.id, session_id=sid)
+                await self.refresh_tokens.create(
+                    RefreshToken(
+                        user_id=user.id,
+                        session_id=sid,
+                        device_id=device_id,
+                        token_hash=refresh_hash,
+                        expires_at=expires_at,
+                        revoked=False,
+                    ),
+                )
+                await self.refresh_tokens.enforce_active_session_limit(user_id=user.id, limit=10, now=datetime.utcnow())
 
         return {
             "access_token": access_token,
@@ -94,8 +111,11 @@ class AuthService:
             if any_rt is None:
                 any_rt = await self.refresh_tokens.get_by_hash(token_hash=legacy_hash)
             if any_rt is not None:
-                async with self.db.begin():
+                if self.db.in_transaction():
                     await self.refresh_tokens.revoke_all_for_user(user_id=any_rt.user_id)
+                else:
+                    async with self.db.begin():
+                        await self.refresh_tokens.revoke_all_for_user(user_id=any_rt.user_id)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
         new_refresh = security.create_refresh_token()
@@ -111,12 +131,18 @@ class AuthService:
             revoked=False,
         )
 
-        async with self.db.begin():
+        if self.db.in_transaction():
             await self.refresh_tokens.create(new_row)
             rt.last_used_at = now
             await self.refresh_tokens.revoke(token=rt, replaced_by_id=new_row.id)
-
             await self.refresh_tokens.enforce_active_session_limit(user_id=rt.user_id, limit=10, now=now)
+        else:
+            async with self.db.begin():
+                await self.refresh_tokens.create(new_row)
+                rt.last_used_at = now
+                await self.refresh_tokens.revoke(token=rt, replaced_by_id=new_row.id)
+
+                await self.refresh_tokens.enforce_active_session_limit(user_id=rt.user_id, limit=10, now=now)
 
         access_token = security.create_access_token(subject=rt.user_id)
         return {
@@ -137,19 +163,29 @@ class AuthService:
         if rt is None:
             return {"status": "ok"}
 
-        async with self.db.begin():
+        if self.db.in_transaction():
             rt.last_used_at = now
             await self.refresh_tokens.revoke(token=rt)
+        else:
+            async with self.db.begin():
+                rt.last_used_at = now
+                await self.refresh_tokens.revoke(token=rt)
 
         return {"status": "ok"}
 
     async def logout_all(self, *, user_id) -> dict:
-        async with self.db.begin():
+        if self.db.in_transaction():
             await self.refresh_tokens.revoke_all_for_user(user_id=user_id)
+        else:
+            async with self.db.begin():
+                await self.refresh_tokens.revoke_all_for_user(user_id=user_id)
         return {"status": "ok"}
 
     async def cleanup_refresh_tokens(self) -> dict:
         now = datetime.utcnow()
-        async with self.db.begin():
+        if self.db.in_transaction():
             deleted = await self.refresh_tokens.delete_expired(now=now)
+        else:
+            async with self.db.begin():
+                deleted = await self.refresh_tokens.delete_expired(now=now)
         return {"status": "ok", "deleted": deleted}
