@@ -92,8 +92,31 @@ class BaseRepository(Generic[ModelType]):
 
 @asynccontextmanager
 async def begin_if_needed(db: AsyncSession):
-    if db.in_transaction():
-        yield db
-    else:
-        async with db.begin():
+    depth = int(db.info.get("_begin_if_needed_depth", 0) or 0)
+    db.info["_begin_if_needed_depth"] = depth + 1
+
+    try:
+        already_in_tx = db.in_transaction()
+        if not already_in_tx:
+            async with db.begin():
+                yield db
+            return
+
+        try:
             yield db
+        except Exception:
+            if depth == 0:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+            raise
+        else:
+            if depth == 0:
+                await db.commit()
+    finally:
+        new_depth = int(db.info.get("_begin_if_needed_depth", 1) or 1) - 1
+        if new_depth <= 0:
+            db.info.pop("_begin_if_needed_depth", None)
+        else:
+            db.info["_begin_if_needed_depth"] = new_depth
