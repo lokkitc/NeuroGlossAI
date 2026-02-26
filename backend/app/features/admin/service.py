@@ -19,21 +19,33 @@ class AdminService:
         self.lessons_repo = AdminGeneratedLessonRepository(db)
         self.learning_service = LearningService(db)
 
-    async def list_users(self, *, skip: int = 0, limit: int = 50) -> list[dict]:
-        users = await self.users_repo.list_users(skip=skip, limit=limit)
-        return [
-            {
-                "id": str(u.id),
-                "username": u.username,
-                "email": u.email,
-                "is_admin": bool(getattr(u, "is_admin", False)),
-                "xp": getattr(u, "xp", 0),
-                "native_language": getattr(u, "native_language", None),
-                "target_language": getattr(u, "target_language", None),
-                "created_at": (u.created_at.isoformat() if getattr(u, "created_at", None) else None),
-            }
-            for u in users
-        ]
+    async def list_users(
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 50,
+        q: str | None = None,
+        is_admin: bool | None = None,
+    ) -> list[User]:
+        return await self.users_repo.list_users(skip=skip, limit=limit, q=q, is_admin=is_admin)
+
+    async def get_user(self, *, user_id: UUID) -> User:
+        user = await self.users_repo.get_by_id(user_id=user_id)
+        if user is None:
+            raise EntityNotFoundException(entity_name="User", entity_id=str(user_id))
+        return user
+
+    async def get_user_by_username(self, *, username: str) -> User:
+        user = await self.users_repo.get_by_username(username=username)
+        if user is None:
+            raise EntityNotFoundException(entity_name="User", entity_id=str(username))
+        return user
+
+    async def get_user_by_email(self, *, email: str) -> User:
+        user = await self.users_repo.get_by_email(email=email)
+        if user is None:
+            raise EntityNotFoundException(entity_name="User", entity_id=str(email))
+        return user
 
     async def set_user_admin(self, *, user_id: UUID, is_admin: bool) -> dict:
         user = await self.users_repo.get_by_id(user_id=user_id)

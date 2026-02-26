@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, lessons, vocabulary, roleplay, gamification, users, path, admin
+from app.api.v1.endpoints import auth, lessons, vocabulary, roleplay, gamification, users, path, admin, public
 from app.api.v1.endpoints import characters, rooms, chat, memory, chat_learning
 from app.api.v1.endpoints import uploads
 from app.api.v1.endpoints import posts
@@ -10,6 +10,7 @@ api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
+api_router.include_router(public.router, prefix="/public", tags=["public"])
 
 if settings.ENABLE_LEGACY_PATH:
     api_router.include_router(path.router, prefix="/path", tags=["path"])          

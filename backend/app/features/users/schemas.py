@@ -85,6 +85,52 @@ class UserResponse(UserBase):
         from_attributes = True
 
 
+class PublicUserResponse(BaseModel):
+    id: UUID
+    username: str
+    preferred_name: Optional[str] = None
+    bio: Optional[str] = None
+
+    selected_theme_id: Optional[UUID] = None
+
+    avatar_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    banner_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AdminUserResponse(BaseModel):
+    id: UUID
+    username: str
+    email: EmailStr
+    is_admin: bool = False
+    xp: int = 0
+    native_language: str | None = None
+    target_language: str | None = None
+    created_at: Any | None = None
+
+    avatar_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    preferred_name: Optional[str] = None
+    bio: Optional[str] = None
+    timezone: Optional[str] = None
+    ui_theme: Optional[str] = None
+    selected_theme_id: Optional[UUID] = None
+
+    assistant_tone: Optional[str] = None
+    assistant_verbosity: Optional[int] = None
+    interests: list[str] = Field(default_factory=list)
+    preferences: Dict[str, Any] = Field(default_factory=dict)
+
+    language_levels: Dict[str, str] = Field(default_factory=dict)
+
+    class Config:
+        from_attributes = True
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

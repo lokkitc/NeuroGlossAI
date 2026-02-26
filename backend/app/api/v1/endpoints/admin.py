@@ -5,21 +5,50 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.features.users.models import User
+from app.features.users.schemas import AdminUserResponse
 from app.features.admin.service import AdminService
 from uuid import UUID
 
 
 router = APIRouter()
 
-
-@router.get("/users")
+@router.get("/users", response_model=list[AdminUserResponse])
 async def admin_list_users(
     db: AsyncSession = Depends(deps.get_db),
     _: User = Depends(deps.require_admin),
+    q: str | None = Query(None, description="Search by username/email (ILIKE)"),
+    is_admin: bool | None = Query(None, description="Filter by admin flag"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ) -> Any:
-    return await AdminService(db).list_users(skip=skip, limit=limit)
+    return await AdminService(db).list_users(skip=skip, limit=limit, q=q, is_admin=is_admin)
+
+
+@router.get("/users/{user_id}", response_model=AdminUserResponse)
+async def admin_get_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(deps.get_db),
+    _: User = Depends(deps.require_admin),
+) -> Any:
+    return await AdminService(db).get_user(user_id=user_id)
+
+
+@router.get("/users/by-username/{username}", response_model=AdminUserResponse)
+async def admin_get_user_by_username(
+    username: str,
+    db: AsyncSession = Depends(deps.get_db),
+    _: User = Depends(deps.require_admin),
+) -> Any:
+    return await AdminService(db).get_user_by_username(username=username)
+
+
+@router.get("/users/by-email/{email}", response_model=AdminUserResponse)
+async def admin_get_user_by_email(
+    email: str,
+    db: AsyncSession = Depends(deps.get_db),
+    _: User = Depends(deps.require_admin),
+) -> Any:
+    return await AdminService(db).get_user_by_email(email=email)
 
 
 @router.post("/users/{user_id}/set-admin")
