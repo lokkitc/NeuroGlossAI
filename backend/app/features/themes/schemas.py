@@ -68,7 +68,7 @@ class ComponentTokens(BaseModel):
 
 class ThemeTokens(BaseModel):
     version: int = 1
-    schema: Literal["neurogloss.v1"] = "neurogloss.v1"
+    schema_: Literal["neurogloss.v1"] = Field("neurogloss.v1", alias="schema")
 
     palette: PaletteTokens
     typography: TypographyTokens = Field(default_factory=TypographyTokens)
@@ -76,6 +76,10 @@ class ThemeTokens(BaseModel):
     effects: EffectsTokens = Field(default_factory=EffectsTokens)
 
     extensions: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = {
+        "populate_by_name": True,
+    }
 
 
 class ThemeBase(BaseModel):
