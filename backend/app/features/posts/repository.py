@@ -35,7 +35,6 @@ class PostLikeRepository(BaseRepository[PostLike]):
         res = await self.db.execute(q)
         return res.scalars().first()
 
-    async def unlike(self, post_id, user_id, *, commit: bool = True) -> None:
+    async def unlike(self, post_id, user_id) -> None:
         await self.db.execute(delete(PostLike).where(PostLike.post_id == post_id).where(PostLike.user_id == user_id))
-        if commit:
-            await self.db.commit()
+        await self.db.flush()

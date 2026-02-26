@@ -43,6 +43,15 @@ class ChatService:
         self.rooms = RoomRepository(db)
         self.room_participants = RoomParticipantRepository(db)
 
+    async def list_sessions(self, *, owner_user_id, skip: int = 0, limit: int = 50):
+        return await self.sessions.list_for_owner(owner_user_id, skip=skip, limit=limit)
+
+    async def get_session_for_owner(self, *, session_id, owner_user_id):
+        sess = await self.sessions.get_full(session_id)
+        if not sess or sess.owner_user_id != owner_user_id:
+            raise EntityNotFoundException("ChatSession", session_id)
+        return sess
+
     async def create_session(self, *, owner_user_id, character_id=None, room_id=None, title: str = "") -> ChatSession:
         if bool(character_id) == bool(room_id):
             raise ServiceException("Provide exactly one of character_id or room_id")
@@ -62,8 +71,9 @@ class ChatService:
             room_id=room_id,
             title=title or "",
         )
-        await self.sessions.create(sess, commit=False)
-        await self.db.commit()
+        async with self.db.begin():
+            await self.sessions.create(sess)
+
         await self.db.refresh(sess)
         return sess
 
@@ -180,11 +190,10 @@ class ChatService:
 
         summary_text = await ai_service.provider.generate_text(prompt)
         row = ChatSessionSummary(session_id=session.id, up_to_turn_index=max_index, content=summary_text)
-        await self.summaries.create(row, commit=False)
-
-        session.last_summary_at_turn = max_index
-        self.db.add(session)
-        await self.db.commit()
+        async with self.db.begin():
+            await self.summaries.create(row)
+            session.last_summary_at_turn = max_index
+            self.db.add(session)
         return row
 
     async def _moderate(self, *, owner_user_id, session_id, turn_id, content: str) -> None:
@@ -207,10 +216,10 @@ class ChatService:
             decision=decision,
             details=details or None,
         )
-        await self.moderation.create(evt, commit=False)
+        async with self.db.begin():
+            await self.moderation.create(evt)
 
         if decision == "block":
-            await self.db.commit()
             raise ServiceException("Message blocked by safety policy")
 
     async def _build_messages_for_llm(
@@ -326,7 +335,8 @@ class ChatService:
                                    
                 next_idx = await self.sessions.next_turn_index(session_id)
                 user_turn = ChatTurn(session_id=session_id, turn_index=next_idx, role="user", content=user_message)
-                await self.turns.create(user_turn, commit=False)
+                async with self.db.begin():
+                    await self.turns.create(user_turn)
 
                 await self._moderate(owner_user_id=owner_user_id, session_id=session_id, turn_id=user_turn.id, content=user_message)
 
@@ -351,7 +361,8 @@ class ChatService:
                         character_id=session.character_id,
                         content=assistant_text,
                     )
-                    await self.turns.create(assistant_turn, commit=False)
+                    async with self.db.begin():
+                        await self.turns.create(assistant_turn)
                     assistant_turns.append(assistant_turn)
                 else:
                                                              
@@ -376,10 +387,10 @@ class ChatService:
                         content=message,
                         meta={"speaker": speaker},
                     )
-                    await self.turns.create(assistant_turn, commit=False)
+                    async with self.db.begin():
+                        await self.turns.create(assistant_turn)
                     assistant_turns.append(assistant_turn)
 
-                await self.db.commit()
                 await self.db.refresh(user_turn)
                 for t in assistant_turns:
                     await self.db.refresh(t)
@@ -402,38 +413,25 @@ class ChatService:
                                 generation_mode="balanced",
                             )
                 except Exception:
-                                                                           
-                    try:
-                        await self.db.rollback()
-                    except Exception:
-                        pass
+                    pass
 
                                  
                 try:
                     await self._maybe_summarize(session)
                 except Exception:
-                    try:
-                        await self.db.rollback()
-                    except Exception:
-                        pass
+                    pass
 
                 return {
                     "session": session,
                     "user_turn": user_turn,
                     "assistant_turns": assistant_turns,
-                    "memory_used": [{"id": str(m.id), "title": m.title, "is_pinned": bool(m.is_pinned)} for m in used_mem],
+                    "memory_used": used_mem,
                 }
+
             except IntegrityError as e:
                 last_integrity_error = e
-                try:
-                    await self.db.rollback()
-                except Exception:
-                    pass
             except Exception as e:
-                try:
-                    await self.db.rollback()
-                except Exception:
-                    pass
+                last_integrity_error = e
 
                 if isinstance(e, (EntityNotFoundException, ServiceException)):
                     raise
@@ -444,4 +442,6 @@ class ChatService:
                 )
                 raise ServiceException("Failed to generate chat turn")
 
-        raise ServiceException(f"Failed to persist chat turns due to a concurrency conflict: {str(last_integrity_error)}")
+        if last_integrity_error is not None:
+            raise ServiceException("Failed to write turn")
+        raise ServiceException("Failed to generate turn")

@@ -8,7 +8,6 @@ from app.api import deps
 from app.features.users.models import User
 from app.features.chat.schemas import ChatSessionCreate, ChatSessionOut, ChatSessionDetail, ChatTurnCreate, ChatTurnResponse
 from app.features.chat.service import ChatService
-from app.core.exceptions import EntityNotFoundException
 
 
 router = APIRouter()
@@ -21,8 +20,7 @@ async def list_sessions(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ) -> Any:
-    repo = ChatService(db).sessions
-    return await repo.list_for_owner(current_user.id, skip=skip, limit=limit)
+    return await ChatService(db).list_sessions(owner_user_id=current_user.id, skip=skip, limit=limit)
 
 
 @router.post("/sessions", response_model=ChatSessionOut)
@@ -47,11 +45,7 @@ async def get_session(
     current_user: User = Depends(deps.get_current_user),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    repo = ChatService(db).sessions
-    sess = await repo.get_full(session_id)
-    if not sess or sess.owner_user_id != current_user.id:
-        raise EntityNotFoundException("ChatSession", session_id)
-    return sess
+    return await ChatService(db).get_session_for_owner(session_id=session_id, owner_user_id=current_user.id)
 
 
 @router.post("/sessions/{session_id}/turn", response_model=ChatTurnResponse)

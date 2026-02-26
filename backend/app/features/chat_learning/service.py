@@ -36,6 +36,20 @@ class ChatLearningService:
         self.user_lexemes = UserLexemeRepository(db)
         self.lesson_lexemes = LessonLexemeRepository(db)
 
+    async def list_lessons_for_session(
+        self,
+        *,
+        owner_user_id,
+        chat_session_id,
+        skip: int = 0,
+        limit: int = 50,
+    ):
+        sess = await self.sessions.get(chat_session_id)
+        if not sess or sess.owner_user_id != owner_user_id:
+            raise EntityNotFoundException("ChatSession", chat_session_id)
+
+        return await self.lessons.list_for_session(owner_user_id, chat_session_id, skip=skip, limit=limit)
+
     @staticmethod
     def _normalize_lexeme(text: str) -> str:
         text = str(text or "").strip().lower()
@@ -426,7 +440,8 @@ class ChatLearningService:
             raw_model_output=raw,
         )
 
-        await self.lessons.create(row, commit=False)
+        async with self.db.begin():
+            await self.lessons.create(row)
 
         sess.last_learning_lesson_at_turn = int(source_to)
 
@@ -463,8 +478,7 @@ class ChatLearningService:
         gen_repo = GeneratedLessonRepository(self.db)
         existing = await gen_repo.get_by_enrollment_and_level(enrollment_id, level_template_id)
         if existing is not None:
-            await gen_repo.delete(existing.id, commit=False)
-            await self.db.flush()
+            await gen_repo.delete(existing.id)
 
         lesson, vocab_items = GeneratedLessonFactory.create_from_ai_response(
             ai_data=legacy_ai_data,
@@ -505,8 +519,9 @@ class ChatLearningService:
             next_unit_topic=(row.topic_snapshot or row.title or inferred_topic or "Chat"),
         )
 
-        self.db.add(sess)
-        await self.db.commit()
+        async with self.db.begin():
+            self.db.add(sess)
+
         await self.db.refresh(row)
         return row
 

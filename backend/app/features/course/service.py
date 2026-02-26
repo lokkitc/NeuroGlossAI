@@ -80,15 +80,6 @@ class CourseService:
     ) -> Enrollment:
         interests = interests or []
 
-        if regenerate:
-            existing = await self.db.execute(
-                select(Enrollment).where(Enrollment.user_id == user.id).where(Enrollment.status == "active")
-            )
-            for enr in existing.scalars().all():
-                enr.status = "archived"
-                self.db.add(enr)
-            await self.db.commit()
-
         interests_str = ", ".join(interests) if interests else "General"
         theme_str = str(theme).strip() if theme else interests_str
         ai_data = await ai_service.generate_course_path(
@@ -101,71 +92,80 @@ class CourseService:
         )
         sections_data = ai_data.get("sections", [])
 
-        course = CourseTemplate(
-            slug=_slugify(f"{user.id}_{user.target_language}_{level}_{theme_str}"),
-            created_by_user_id=user.id,
-            target_language=user.target_language,
-            theme=theme_str,
-            cefr_level=level,
-            version=1,
-            is_active=True,
-            interests=interests,
-        )
-        self.db.add(course)
-        await self.db.flush()
+        async with self.db.begin():
+            if regenerate:
+                existing = await self.db.execute(
+                    select(Enrollment).where(Enrollment.user_id == user.id).where(Enrollment.status == "active")
+                )
+                for enr in existing.scalars().all():
+                    enr.status = "archived"
+                    self.db.add(enr)
 
-        first_level_template_id: uuid.UUID | None = None
-
-        for sec in sections_data:
-            section = CourseSectionTemplate(
-                course_template_id=course.id,
-                order=sec.get("order", 1),
-                title=sec.get("title", "Section"),
-                description=sec.get("description", ""),
+            course = CourseTemplate(
+                slug=_slugify(f"{user.id}_{user.target_language}_{level}_{theme_str}"),
+                created_by_user_id=user.id,
+                target_language=user.target_language,
+                theme=theme_str,
+                cefr_level=level,
+                version=1,
+                is_active=True,
+                interests=interests,
             )
-            self.db.add(section)
+            self.db.add(course)
             await self.db.flush()
 
-            for unit_data in sec.get("units", []) or []:
-                unit = CourseUnitTemplate(
-                    section_template_id=section.id,
-                    order=unit_data.get("order", 1),
-                    topic=unit_data.get("topic", "Topic"),
-                    description=unit_data.get("description", ""),
-                    icon=unit_data.get("icon", "📚"),
+            first_level_template_id: uuid.UUID | None = None
+
+            for sec in sections_data:
+                section = CourseSectionTemplate(
+                    course_template_id=course.id,
+                    order=sec.get("order", 1),
+                    title=sec.get("title", "Section"),
+                    description=sec.get("description", ""),
                 )
-                self.db.add(unit)
+                self.db.add(section)
                 await self.db.flush()
 
-                created_levels = await self._create_standard_levels_for_unit(unit)
-                if first_level_template_id is None and created_levels:
-                    first_level_template_id = created_levels[0].id
-
-        enrollment = Enrollment(user_id=user.id, course_template_id=course.id, status="active")
-        self.db.add(enrollment)
-        await self.db.flush()
-
-        course_full = await self.get_course_template_full(course.id)
-        assert course_full is not None
-
-        progress_rows: list[UserLevelProgress] = []
-        for section in course_full.sections:
-            for unit in section.units:
-                for lvl in unit.levels:
-                    status = ProgressStatus.LOCKED.value
-                    if first_level_template_id is not None and lvl.id == first_level_template_id:
-                        status = ProgressStatus.IN_PROGRESS.value
-                    progress_rows.append(
-                        UserLevelProgress(
-                            enrollment_id=enrollment.id,
-                            level_template_id=lvl.id,
-                            status=status,
-                            stars=0,
-                        )
+                for unit_data in sec.get("units", []) or []:
+                    unit = CourseUnitTemplate(
+                        section_template_id=section.id,
+                        order=unit_data.get("order", 1),
+                        topic=unit_data.get("topic", "Topic"),
+                        description=unit_data.get("description", ""),
+                        icon=unit_data.get("icon", "📚"),
                     )
+                    self.db.add(unit)
+                    await self.db.flush()
 
-        self.db.add_all(progress_rows)
-        await self.db.commit()
+                    created_levels = await self._create_standard_levels_for_unit(unit)
+                    if first_level_template_id is None and created_levels:
+                        first_level_template_id = created_levels[0].id
+
+            enrollment = Enrollment(user_id=user.id, course_template_id=course.id, status="active")
+            self.db.add(enrollment)
+            await self.db.flush()
+
+            course_full = await self.get_course_template_full(course.id)
+            assert course_full is not None
+
+            progress_rows: list[UserLevelProgress] = []
+            for section in course_full.sections:
+                for unit in section.units:
+                    for lvl in unit.levels:
+                        status = ProgressStatus.LOCKED.value
+                        if first_level_template_id is not None and lvl.id == first_level_template_id:
+                            status = ProgressStatus.IN_PROGRESS.value
+                        progress_rows.append(
+                            UserLevelProgress(
+                                enrollment_id=enrollment.id,
+                                level_template_id=lvl.id,
+                                status=status,
+                                stars=0,
+                            )
+                        )
+
+            self.db.add_all(progress_rows)
+
         await self.db.refresh(enrollment)
         return enrollment
 

@@ -1452,17 +1452,10 @@ class AIService:
                                 provider=provider_name,
                                 model=model_name,
                             )
-                            await db.commit()
                         except IntegrityError:
-                            try:
-                                await db.rollback()
-                            except Exception:
-                                pass
+                            pass
                         except Exception:
-                            try:
-                                await db.rollback()
-                            except Exception:
-                                pass
+                            pass
 
                     return result
                 except Exception as e:

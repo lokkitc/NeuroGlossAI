@@ -133,24 +133,21 @@ class LearningService:
                 meta = ai_data.get("_meta") if isinstance(ai_data, dict) else None
                 repo = AIIOpsRepository(self.db)
                 latency_ms = int((time.monotonic() - started) * 1000)
-                await repo.create_event(
-                    enrollment_id=enrollment.id,
-                    generated_lesson_id=None,
-                    operation="lesson_generate",
-                    provider=(meta.get("provider") if isinstance(meta, dict) else None),
-                    model=(meta.get("model") if isinstance(meta, dict) else None),
-                    generation_mode=(meta.get("generation_mode") if isinstance(meta, dict) else str(generation_mode)),
-                    latency_ms=latency_ms,
-                    repair_count=(meta.get("repair_count") if isinstance(meta, dict) else None),
-                    quality_status=(meta.get("quality_status") if isinstance(meta, dict) else None),
-                    error_codes=_extract_error_codes(meta.get("validation_errors") if isinstance(meta, dict) else None),
-                )
-                await self.db.commit()
+                async with self.db.begin():
+                    await repo.create_event(
+                        enrollment_id=enrollment.id,
+                        generated_lesson_id=None,
+                        operation="lesson_generate",
+                        provider=(meta.get("provider") if isinstance(meta, dict) else None),
+                        model=(meta.get("model") if isinstance(meta, dict) else None),
+                        generation_mode=(meta.get("generation_mode") if isinstance(meta, dict) else str(generation_mode)),
+                        latency_ms=latency_ms,
+                        repair_count=(meta.get("repair_count") if isinstance(meta, dict) else None),
+                        quality_status=(meta.get("quality_status") if isinstance(meta, dict) else None),
+                        error_codes=_extract_error_codes(meta.get("validation_errors") if isinstance(meta, dict) else None),
+                    )
             except Exception:
-                try:
-                    await self.db.rollback()
-                except Exception:
-                    pass
+                pass
 
                                                                                            
         meta = ai_data.get("_meta") if isinstance(ai_data, dict) else None
@@ -223,24 +220,21 @@ class LearningService:
                 meta_evt = ex_data.get("_meta") if isinstance(ex_data, dict) else None
                 repo = AIIOpsRepository(self.db)
                 latency_ms = int((time.monotonic() - started) * 1000)
-                await repo.create_event(
-                    enrollment_id=lesson.enrollment_id,
-                    generated_lesson_id=lesson.id,
-                    operation="lesson_regen_exercises",
-                    provider=(meta_evt.get("provider") if isinstance(meta_evt, dict) else None),
-                    model=(meta_evt.get("model") if isinstance(meta_evt, dict) else None),
-                    generation_mode=(meta_evt.get("generation_mode") if isinstance(meta_evt, dict) else str(generation_mode)),
-                    latency_ms=latency_ms,
-                    repair_count=None,
-                    quality_status=(meta_evt.get("quality_status") if isinstance(meta_evt, dict) else None),
-                    error_codes=_extract_error_codes(meta_evt.get("validation_errors") if isinstance(meta_evt, dict) else None),
-                )
-                await self.db.commit()
+                async with self.db.begin():
+                    await repo.create_event(
+                        enrollment_id=lesson.enrollment_id,
+                        generated_lesson_id=lesson.id,
+                        operation="lesson_regen_exercises",
+                        provider=(meta_evt.get("provider") if isinstance(meta_evt, dict) else None),
+                        model=(meta_evt.get("model") if isinstance(meta_evt, dict) else None),
+                        generation_mode=(meta_evt.get("generation_mode") if isinstance(meta_evt, dict) else str(generation_mode)),
+                        latency_ms=latency_ms,
+                        repair_count=None,
+                        quality_status=(meta_evt.get("quality_status") if isinstance(meta_evt, dict) else None),
+                        error_codes=_extract_error_codes(meta_evt.get("validation_errors") if isinstance(meta_evt, dict) else None),
+                    )
             except Exception:
-                try:
-                    await self.db.rollback()
-                except Exception:
-                    pass
+                pass
 
         meta = ex_data.get("_meta") if isinstance(ex_data, dict) else None
         lesson.exercises = ex_data.get("exercises", []) if isinstance(ex_data, dict) else []
@@ -254,8 +248,8 @@ class LearningService:
         if isinstance(meta, dict) and meta.get("exercise_attempts"):
             lesson.repair_count = int(getattr(lesson, "repair_count", 0) or 0)
 
-        self.db.add(lesson)
-        await self.db.commit()
+        async with self.db.begin():
+            self.db.add(lesson)
         return await self.generated_repo.get_by_id_and_enrollment(lesson.id, lesson.enrollment_id)
 
     async def regenerate_core_only(
@@ -290,24 +284,21 @@ class LearningService:
                 meta_evt = ai_core.get("_meta") if isinstance(ai_core, dict) else None
                 repo = AIIOpsRepository(self.db)
                 latency_ms = int((time.monotonic() - started) * 1000)
-                await repo.create_event(
-                    enrollment_id=lesson.enrollment_id,
-                    generated_lesson_id=lesson.id,
-                    operation="lesson_regen_core",
-                    provider=(meta_evt.get("provider") if isinstance(meta_evt, dict) else None),
-                    model=(meta_evt.get("model") if isinstance(meta_evt, dict) else None),
-                    generation_mode=(meta_evt.get("generation_mode") if isinstance(meta_evt, dict) else str(generation_mode)),
-                    latency_ms=latency_ms,
-                    repair_count=(meta_evt.get("repair_count") if isinstance(meta_evt, dict) else None),
-                    quality_status=(meta_evt.get("quality_status") if isinstance(meta_evt, dict) else None),
-                    error_codes=_extract_error_codes(meta_evt.get("validation_errors") if isinstance(meta_evt, dict) else None),
-                )
-                await self.db.commit()
+                async with self.db.begin():
+                    await repo.create_event(
+                        enrollment_id=lesson.enrollment_id,
+                        generated_lesson_id=lesson.id,
+                        operation="lesson_regen_core",
+                        provider=(meta_evt.get("provider") if isinstance(meta_evt, dict) else None),
+                        model=(meta_evt.get("model") if isinstance(meta_evt, dict) else None),
+                        generation_mode=(meta_evt.get("generation_mode") if isinstance(meta_evt, dict) else str(generation_mode)),
+                        latency_ms=latency_ms,
+                        repair_count=(meta_evt.get("repair_count") if isinstance(meta_evt, dict) else None),
+                        quality_status=(meta_evt.get("quality_status") if isinstance(meta_evt, dict) else None),
+                        error_codes=_extract_error_codes(meta_evt.get("validation_errors") if isinstance(meta_evt, dict) else None),
+                    )
             except Exception:
-                try:
-                    await self.db.rollback()
-                except Exception:
-                    pass
+                pass
 
         meta = ai_core.get("_meta") if isinstance(ai_core, dict) else None
 
@@ -352,7 +343,11 @@ class LearningService:
         for it in new_items:
             self.db.add(it)
 
-        await self.db.commit()
+        async with self.db.begin():
+            # ensure pending deletions and inserts are persisted
+            self.db.add(lesson)
+            for it in new_items:
+                self.db.add(it)
         refreshed = await self.generated_repo.get_by_id_and_enrollment(lesson.id, lesson.enrollment_id)
 
                                                                    
@@ -374,68 +369,56 @@ class LearningService:
         enrollment_id: uuid.UUID,
         target_language: str,
     ) -> None:
-        any_updates = False
+        async with self.db.begin():
+            for item in getattr(generated_lesson, "vocabulary_items", []) or []:
+                word = getattr(item, "word", None)
+                if not word:
+                    continue
 
-        for item in getattr(generated_lesson, "vocabulary_items", []) or []:
-            word = getattr(item, "word", None)
-            if not word:
-                continue
+                normalized = _normalize_word(str(word))
 
-            normalized = _normalize_word(str(word))
+                lexeme = await self.lexeme_repo.get_by_lang_and_normalized(target_language=target_language, normalized=normalized)
+                if lexeme is None:
+                    lexeme = await self.lexeme_repo.create(
+                        Lexeme(
+                            target_language=target_language,
+                            text=str(word),
+                            normalized=normalized,
+                        )
+                    )
 
-            lexeme = await self.lexeme_repo.get_by_lang_and_normalized(target_language=target_language, normalized=normalized)
-            if lexeme is None:
-                lexeme = await self.lexeme_repo.create(
-                    Lexeme(
-                        target_language=target_language,
-                        text=str(word),
-                        normalized=normalized,
-                    ),
-                    commit=False,
+                user_lexeme = await self.user_lexeme_repo.get_by_user_and_lexeme(user_id=user_id, lexeme_id=lexeme.id)
+                if user_lexeme is None:
+                    user_lexeme = await self.user_lexeme_repo.create(
+                        UserLexeme(
+                            user_id=user_id,
+                            enrollment_id=enrollment_id,
+                            lexeme_id=lexeme.id,
+                            translation_preferred=getattr(item, "translation", None),
+                            context_sentence_preferred=getattr(item, "context_sentence", None),
+                            mastery_level=getattr(item, "mastery_level", 0) or 0,
+                            next_review_at=getattr(item, "next_review_at", None),
+                        )
+                    )
+
+                if getattr(item, "user_lexeme_id", None) != user_lexeme.id:
+                    item.user_lexeme_id = user_lexeme.id
+                    self.db.add(item)
+
+                existing_link = await self.lesson_lexeme_repo.get_by_lesson_and_lexeme(
+                    generated_lesson_id=generated_lesson.id,
+                    lexeme_id=lexeme.id,
                 )
-                any_updates = True
-
-            user_lexeme = await self.user_lexeme_repo.get_by_user_and_lexeme(user_id=user_id, lexeme_id=lexeme.id)
-            if user_lexeme is None:
-                user_lexeme = await self.user_lexeme_repo.create(
-                    UserLexeme(
-                        user_id=user_id,
-                        enrollment_id=enrollment_id,
-                        lexeme_id=lexeme.id,
-                        translation_preferred=getattr(item, "translation", None),
-                        context_sentence_preferred=getattr(item, "context_sentence", None),
-                        mastery_level=getattr(item, "mastery_level", 0) or 0,
-                        next_review_at=getattr(item, "next_review_at", None),
-                    ),
-                    commit=False,
-                )
-                any_updates = True
-
-                                                                                                        
-            if getattr(item, "user_lexeme_id", None) != user_lexeme.id:
-                item.user_lexeme_id = user_lexeme.id
-                self.db.add(item)
-                any_updates = True
-
-            existing_link = await self.lesson_lexeme_repo.get_by_lesson_and_lexeme(
-                generated_lesson_id=generated_lesson.id,
-                lexeme_id=lexeme.id,
-            )
-            if existing_link is None:
-                await self.lesson_lexeme_repo.create(
-                    LessonLexeme(
-                        generated_lesson_id=generated_lesson.id,
-                        lexeme_id=lexeme.id,
-                        user_lexeme_id=user_lexeme.id,
-                        translation=getattr(item, "translation", None),
-                        context_sentence=getattr(item, "context_sentence", None),
-                    ),
-                    commit=False,
-                )
-                any_updates = True
-
-        if any_updates:
-            await self.db.commit()
+                if existing_link is None:
+                    await self.lesson_lexeme_repo.create(
+                        LessonLexeme(
+                            generated_lesson_id=generated_lesson.id,
+                            lexeme_id=lexeme.id,
+                            user_lexeme_id=user_lexeme.id,
+                            translation=getattr(item, "translation", None),
+                            context_sentence=getattr(item, "context_sentence", None),
+                        )
+                    )
 
     async def get_user_generated_lessons(
         self,

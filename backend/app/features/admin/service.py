@@ -38,8 +38,10 @@ class AdminService:
         user = await self.users_repo.get_by_id(user_id=user_id)
         if user is None:
             raise EntityNotFoundException(entity_name="User", entity_id=str(user_id))
-        user.is_admin = bool(is_admin)
-        await self.db.commit()
+        async with self.db.begin():
+            user.is_admin = bool(is_admin)
+            self.db.add(user)
+
         await self.db.refresh(user)
         return {"id": str(user.id), "is_admin": bool(user.is_admin)}
 
@@ -139,8 +141,8 @@ class AdminService:
             raise ValueError("Purge is only implemented for PostgreSQL")
 
         sql = "TRUNCATE TABLE " + ", ".join(tables) + " RESTART IDENTITY CASCADE"
-        await self.db.execute(text(sql))
-        await self.db.commit()
+        async with self.db.begin():
+            await self.db.execute(text(sql))
         return {"status": "ok", "truncated": tables}
 
     async def regen_core(self, *, lesson_id: UUID, level: str, generation_mode: str) -> dict:

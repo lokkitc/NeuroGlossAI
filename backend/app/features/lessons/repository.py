@@ -57,9 +57,5 @@ class GeneratedLessonRepository(BaseRepository[GeneratedLesson]):
             item.generated_lesson_id = lesson.id
             self.db.add(item)
 
-        if self.db.in_transaction():
-            await self.db.flush()
-        else:
-            await self.db.commit()
-            await self.db.refresh(lesson)
+        await self.db.flush()
         return await self.get_by_id_and_enrollment(lesson.id, lesson.enrollment_id)

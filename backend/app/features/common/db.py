@@ -62,16 +62,12 @@ class BaseRepository(Generic[ModelType]):
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    async def create(self, obj_in: ModelType, commit: bool = True) -> ModelType:
+    async def create(self, obj_in: ModelType) -> ModelType:
         self.db.add(obj_in)
-        if commit:
-            await self.db.commit()
-            await self.db.refresh(obj_in)
-        else:
-            await self.db.flush()
+        await self.db.flush()
         return obj_in
 
-    async def update(self, db_obj: ModelType, obj_in: dict | Any, commit: bool = True) -> ModelType:
+    async def update(self, db_obj: ModelType, obj_in: dict | Any) -> ModelType:
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
@@ -82,17 +78,12 @@ class BaseRepository(Generic[ModelType]):
                 setattr(db_obj, field, update_data[field])
 
         self.db.add(db_obj)
-        if commit:
-            await self.db.commit()
-            await self.db.refresh(db_obj)
-        else:
-            await self.db.flush()
+        await self.db.flush()
         return db_obj
 
-    async def delete(self, id: Any, commit: bool = True) -> Optional[ModelType]:
+    async def delete(self, id: Any) -> Optional[ModelType]:
         obj = await self.get(id)
         if obj:
             await self.db.delete(obj)
-            if commit:
-                await self.db.commit()
+            await self.db.flush()
         return obj

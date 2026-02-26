@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import cloudinary
 import cloudinary.uploader
+from fastapi import UploadFile
+from fastapi.concurrency import run_in_threadpool
 
 from app.core.config import settings
 from app.core.exceptions import ServiceException
@@ -36,3 +38,18 @@ class UploadService:
             )
         except Exception as e:
             raise ServiceException(f"Upload failed: {str(e)}")
+
+    async def upload_image_file(self, *, image: UploadFile, folder: str = "neuroglossai") -> dict:
+        content_type = (getattr(image, "content_type", None) or "").lower()
+        if not content_type.startswith("image/"):
+            raise ServiceException("Only image uploads are supported")
+
+        data = await image.read()
+        if not data:
+            raise ServiceException("Empty file")
+
+        if settings.UPLOAD_MAX_BYTES and len(data) > int(settings.UPLOAD_MAX_BYTES):
+            raise ServiceException("File too large")
+
+        filename = getattr(image, "filename", None) or "image"
+        return await run_in_threadpool(self.upload_image, data=data, filename=filename, folder=folder)
