@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.exceptions import NeuroGlossException
+from app.features.common.db import begin_if_needed
 from app.features.users.models import User
 from app.features.users.schemas import UserUpdateLanguages, UserUpdate
 from app.features.user_progress.models import Streak, Enrollment, UserLevelProgress, UserLevelAttempt
@@ -22,7 +23,7 @@ class UserService:
         self.db = db
 
     async def update_languages(self, *, current_user: User, languages: UserUpdateLanguages) -> User:
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             current_user.target_language = languages.target_language
             current_user.native_language = languages.native_language
             self.db.add(current_user)
@@ -89,7 +90,7 @@ class UserService:
         }
 
     async def reset_progress(self, *, current_user: User) -> User:
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             enrollments = await self.db.execute(select(Enrollment).where(Enrollment.user_id == current_user.id))
             enrollments = enrollments.scalars().all()
             enrollment_ids = [e.id for e in enrollments]
@@ -123,7 +124,7 @@ class UserService:
     async def update_me(self, *, current_user: User, body: UserUpdate) -> User:
         update_data = body.model_dump(exclude_unset=True)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             for field, value in update_data.items():
                 if hasattr(current_user, field):
                     setattr(current_user, field, value)

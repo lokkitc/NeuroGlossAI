@@ -1,5 +1,6 @@
 import uuid
 
+from contextlib import asynccontextmanager
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.types import TypeDecorator, CHAR
 from sqlalchemy.dialects.postgresql import UUID
@@ -87,3 +88,12 @@ class BaseRepository(Generic[ModelType]):
             await self.db.delete(obj)
             await self.db.flush()
         return obj
+
+
+@asynccontextmanager
+async def begin_if_needed(db: AsyncSession):
+    if db.in_transaction():
+        yield db
+    else:
+        async with db.begin():
+            yield db

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.core.exceptions import EntityNotFoundException, ServiceException
+from app.features.common.db import begin_if_needed
 from app.features.rooms.models import Room, RoomParticipant
 from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
 from app.features.rooms.schemas import RoomCreate, RoomUpdate
@@ -38,7 +39,7 @@ class RoomService:
             is_nsfw=bool(body.is_nsfw),
         )
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.rooms.create(room)
             for cid in body.participant_character_ids:
                 part = RoomParticipant(room_id=room.id, character_id=cid, priority=0, is_pinned=False)
@@ -54,7 +55,7 @@ class RoomService:
         if not room or room.owner_user_id != owner_user_id:
             raise EntityNotFoundException("Room", room_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.rooms.update(room, body)
 
         room_full = await self.rooms.get_full(room_id)
@@ -67,7 +68,7 @@ class RoomService:
         if not room or room.owner_user_id != owner_user_id:
             raise EntityNotFoundException("Room", room_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.rooms.delete(room_id)
 
         return {"status": "ok"}

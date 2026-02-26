@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions import EntityNotFoundException, ServiceException
+from app.features.common.db import begin_if_needed
 from app.features.rooms.models import RoomParticipant
 from app.features.chat.models import ChatSession, ChatTurn, ChatSessionSummary, ModerationEvent
 from app.features.memory.models import MemoryItem
@@ -71,7 +72,7 @@ class ChatService:
             room_id=room_id,
             title=title or "",
         )
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.sessions.create(sess)
 
         await self.db.refresh(sess)
@@ -190,7 +191,7 @@ class ChatService:
 
         summary_text = await ai_service.provider.generate_text(prompt)
         row = ChatSessionSummary(session_id=session.id, up_to_turn_index=max_index, content=summary_text)
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.summaries.create(row)
             session.last_summary_at_turn = max_index
             self.db.add(session)
@@ -216,7 +217,7 @@ class ChatService:
             decision=decision,
             details=details or None,
         )
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.moderation.create(evt)
 
         if decision == "block":
@@ -335,7 +336,7 @@ class ChatService:
                                    
                 next_idx = await self.sessions.next_turn_index(session_id)
                 user_turn = ChatTurn(session_id=session_id, turn_index=next_idx, role="user", content=user_message)
-                async with self.db.begin():
+                async with begin_if_needed(self.db):
                     await self.turns.create(user_turn)
 
                 await self._moderate(owner_user_id=owner_user_id, session_id=session_id, turn_id=user_turn.id, content=user_message)
@@ -361,7 +362,7 @@ class ChatService:
                         character_id=session.character_id,
                         content=assistant_text,
                     )
-                    async with self.db.begin():
+                    async with begin_if_needed(self.db):
                         await self.turns.create(assistant_turn)
                     assistant_turns.append(assistant_turn)
                 else:
@@ -387,7 +388,7 @@ class ChatService:
                         content=message,
                         meta={"speaker": speaker},
                     )
-                    async with self.db.begin():
+                    async with begin_if_needed(self.db):
                         await self.turns.create(assistant_turn)
                     assistant_turns.append(assistant_turn)
 

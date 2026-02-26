@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import EntityNotFoundException
+from app.features.common.db import begin_if_needed
 from app.features.user_progress.models import Enrollment
 from app.features.users.models import User
 from app.features.admin.repository import AdminUserRepository, AdminGeneratedLessonRepository
@@ -38,7 +39,7 @@ class AdminService:
         user = await self.users_repo.get_by_id(user_id=user_id)
         if user is None:
             raise EntityNotFoundException(entity_name="User", entity_id=str(user_id))
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             user.is_admin = bool(is_admin)
             self.db.add(user)
 
@@ -141,7 +142,7 @@ class AdminService:
             raise ValueError("Purge is only implemented for PostgreSQL")
 
         sql = "TRUNCATE TABLE " + ", ".join(tables) + " RESTART IDENTITY CASCADE"
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.db.execute(text(sql))
         return {"status": "ok", "truncated": tables}
 

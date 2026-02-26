@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.core.exceptions import EntityNotFoundException
+from app.features.common.db import begin_if_needed
 from app.features.characters.models import Character
 from app.features.characters.repository import CharacterRepository
 from app.features.characters.schemas import CharacterCreate, CharacterUpdate
@@ -43,7 +44,7 @@ class CharacterService:
             settings=body.settings,
         )
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.characters.create(row)
 
         await self.db.refresh(row)
@@ -54,7 +55,7 @@ class CharacterService:
         if not ch or ch.owner_user_id != owner_user_id:
             raise EntityNotFoundException("Character", character_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.characters.update(ch, body)
 
         await self.db.refresh(ch)
@@ -65,7 +66,7 @@ class CharacterService:
         if not ch or ch.owner_user_id != owner_user_id:
             raise EntityNotFoundException("Character", character_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.characters.delete(character_id)
 
         return {"status": "ok"}

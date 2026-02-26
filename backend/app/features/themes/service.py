@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.core.exceptions import EntityNotFoundException, NeuroGlossException
+from app.features.common.db import begin_if_needed
 from app.features.themes.models import Theme
 from app.features.themes.repository import ThemeRepository
 from app.features.themes.schemas import ThemeCreate
@@ -37,7 +38,7 @@ class ThemeService:
             dark_tokens=body.dark_tokens.model_dump(by_alias=True) if body.dark_tokens is not None else None,
         )
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.themes.create(row)
 
         await self.db.refresh(row)
@@ -49,7 +50,7 @@ class ThemeService:
         if theme is None:
             raise EntityNotFoundException("Theme", theme_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             current_user.selected_theme_id = theme.id
             self.db.add(current_user)
 
@@ -66,7 +67,7 @@ class ThemeService:
         if theme is None:
             raise EntityNotFoundException("Theme", theme_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             ch.chat_theme_id = theme.id
             self.db.add(ch)
 

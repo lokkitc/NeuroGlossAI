@@ -23,6 +23,7 @@ from app.features.lessons.factories import GeneratedLessonFactory
 from app.features.ai.ai_service import ai_service
 from app.features.srs.repository import LexemeRepository, UserLexemeRepository, LessonLexemeRepository
 from app.features.srs.models import Lexeme, UserLexeme, LessonLexeme
+from app.features.common.db import begin_if_needed
 from app.utils.prompt_templates import CHAT_LEARNING_LESSON_TEMPLATE
 
 
@@ -440,10 +441,12 @@ class ChatLearningService:
             raw_model_output=raw,
         )
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.lessons.create(row)
 
         sess.last_learning_lesson_at_turn = int(source_to)
+        sess.last_learning_lesson_id = row.id
+        sess.last_learning_lesson_title = row.title
 
         if not sess.enrollment_id or not sess.active_level_template_id:
             raise ServiceException("Chat session is missing enrollment/active level")
@@ -519,7 +522,7 @@ class ChatLearningService:
             next_unit_topic=(row.topic_snapshot or row.title or inferred_topic or "Chat"),
         )
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             self.db.add(sess)
 
         await self.db.refresh(row)

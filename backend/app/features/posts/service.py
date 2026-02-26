@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from uuid import UUID
 
 from app.core.exceptions import EntityNotFoundException, ServiceException
+from app.features.common.db import begin_if_needed
 from app.features.posts.models import Post, PostLike
 from app.features.posts.repository import PostRepository, PostLikeRepository
 from app.features.posts.schemas import PostCreate
@@ -34,7 +35,7 @@ class PostService:
             is_public=bool(body.is_public),
         )
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.posts.create(row)
 
         await self.db.refresh(row)
@@ -46,7 +47,7 @@ class PostService:
         if not post or post.author_user_id != author_user_id:
             raise EntityNotFoundException("Post", post_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.posts.delete(post_id)
 
         return {"status": "ok"}
@@ -62,7 +63,7 @@ class PostService:
 
         row = PostLike(post_id=post_id, user_id=user_id)
         try:
-            async with self.db.begin():
+            async with begin_if_needed(self.db):
                 await self.likes.create(row)
         except IntegrityError:
             return {"status": "ok"}
@@ -76,7 +77,7 @@ class PostService:
         if not post or not post.is_public:
             raise EntityNotFoundException("Post", post_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.likes.unlike(post_id, user_id)
 
         return {"status": "ok"}

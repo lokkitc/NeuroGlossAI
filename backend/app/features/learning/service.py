@@ -22,6 +22,7 @@ from app.features.lessons.models import GeneratedVocabularyItem
 from app.features.vocabulary.schemas import VocabularyReviewRequest
 from app.features.ai.ai_service import ai_service, GenerationMode
 from app.features.ai.repository import AIIOpsRepository
+from app.features.common.db import begin_if_needed
 from app.features.lessons.repository import GeneratedLessonRepository
 from app.features.lessons.generated_vocabulary_repository import GeneratedVocabularyRepository
 from app.features.srs.repository import LexemeRepository, UserLexemeRepository, LessonLexemeRepository
@@ -133,7 +134,7 @@ class LearningService:
                 meta = ai_data.get("_meta") if isinstance(ai_data, dict) else None
                 repo = AIIOpsRepository(self.db)
                 latency_ms = int((time.monotonic() - started) * 1000)
-                async with self.db.begin():
+                async with begin_if_needed(self.db):
                     await repo.create_event(
                         enrollment_id=enrollment.id,
                         generated_lesson_id=None,
@@ -220,7 +221,7 @@ class LearningService:
                 meta_evt = ex_data.get("_meta") if isinstance(ex_data, dict) else None
                 repo = AIIOpsRepository(self.db)
                 latency_ms = int((time.monotonic() - started) * 1000)
-                async with self.db.begin():
+                async with begin_if_needed(self.db):
                     await repo.create_event(
                         enrollment_id=lesson.enrollment_id,
                         generated_lesson_id=lesson.id,
@@ -248,7 +249,7 @@ class LearningService:
         if isinstance(meta, dict) and meta.get("exercise_attempts"):
             lesson.repair_count = int(getattr(lesson, "repair_count", 0) or 0)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             self.db.add(lesson)
         return await self.generated_repo.get_by_id_and_enrollment(lesson.id, lesson.enrollment_id)
 
@@ -284,7 +285,7 @@ class LearningService:
                 meta_evt = ai_core.get("_meta") if isinstance(ai_core, dict) else None
                 repo = AIIOpsRepository(self.db)
                 latency_ms = int((time.monotonic() - started) * 1000)
-                async with self.db.begin():
+                async with begin_if_needed(self.db):
                     await repo.create_event(
                         enrollment_id=lesson.enrollment_id,
                         generated_lesson_id=lesson.id,
@@ -343,7 +344,7 @@ class LearningService:
         for it in new_items:
             self.db.add(it)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             # ensure pending deletions and inserts are persisted
             self.db.add(lesson)
             for it in new_items:
@@ -369,7 +370,7 @@ class LearningService:
         enrollment_id: uuid.UUID,
         target_language: str,
     ) -> None:
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             for item in getattr(generated_lesson, "vocabulary_items", []) or []:
                 word = getattr(item, "word", None)
                 if not word:

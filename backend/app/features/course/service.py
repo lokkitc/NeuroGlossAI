@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.features.users.models import User
+from app.features.common.db import begin_if_needed
 from app.features.course.models import (
     CourseTemplate,
     CourseSectionTemplate,
@@ -92,7 +93,7 @@ class CourseService:
         )
         sections_data = ai_data.get("sections", [])
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             if regenerate:
                 existing = await self.db.execute(
                     select(Enrollment).where(Enrollment.user_id == user.id).where(Enrollment.status == "active")

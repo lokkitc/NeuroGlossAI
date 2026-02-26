@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.core.exceptions import EntityNotFoundException
+from app.features.common.db import begin_if_needed
 from app.features.memory.models import MemoryItem
 from app.features.memory.repository import MemoryRepository
 from app.features.memory.schemas import MemoryCreate, MemoryUpdate
@@ -31,7 +32,7 @@ class MemoryService:
             importance=int(body.importance or 0),
         )
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.memories.create(row)
 
         await self.db.refresh(row)
@@ -42,7 +43,7 @@ class MemoryService:
         if not row or row.owner_user_id != owner_user_id:
             raise EntityNotFoundException("MemoryItem", memory_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.memories.update(row, body)
 
         await self.db.refresh(row)
@@ -53,7 +54,7 @@ class MemoryService:
         if not row or row.owner_user_id != owner_user_id:
             raise EntityNotFoundException("MemoryItem", memory_id)
 
-        async with self.db.begin():
+        async with begin_if_needed(self.db):
             await self.memories.delete(memory_id)
 
         return {"status": "ok"}
