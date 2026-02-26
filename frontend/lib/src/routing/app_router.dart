@@ -14,9 +14,12 @@ import '../features/chat/presentation/pages/chat_session_page.dart';
 import '../features/characters/presentation/pages/characters_page.dart';
 import '../features/characters/presentation/pages/character_create_page.dart';
 import '../features/home/presentation/pages/home_page.dart';
+import '../features/posts/presentation/pages/posts_page.dart';
+import '../features/posts/presentation/pages/post_create_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
+import '../features/themes/presentation/pages/theme_select_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
@@ -67,6 +70,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: Routes.home,
                 name: RouteNames.home,
                 builder: (context, state) => const HomePage(),
+                routes: [
+                  GoRoute(
+                    path: 'posts',
+                    name: RouteNames.posts,
+                    builder: (context, state) => const PostsPage(),
+                    routes: [
+                      GoRoute(
+                        path: 'create',
+                        name: RouteNames.postCreate,
+                        builder: (context, state) => const PostCreatePage(),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
@@ -120,6 +137,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: Routes.profile,
                 name: RouteNames.profile,
                 builder: (context, state) => const ProfilePage(),
+                routes: [
+                  GoRoute(
+                    path: 'themes',
+                    name: RouteNames.themeSelect,
+                    builder: (context, state) => const ThemeSelectPage(),
+                  ),
+                ],
               ),
             ],
           ),

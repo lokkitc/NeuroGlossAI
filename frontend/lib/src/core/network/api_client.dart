@@ -104,4 +104,26 @@ class ApiClient {
       throw mapped;
     }
   }
+
+  Future<Map<String, dynamic>> postMultipartMap(
+    String path, {
+    required FormData formData,
+    Map<String, dynamic>? query,
+    Options? options,
+  }) async {
+    try {
+      final res = await _dio.post<dynamic>(
+        path,
+        data: formData,
+        queryParameters: query,
+        options: options,
+      );
+      final body = res.data;
+      if (body is Map<String, dynamic>) return body;
+      if (body is Map) return Map<String, dynamic>.from(body);
+      throw Exception('Expected JSON object');
+    } catch (e) {
+      throw ErrorMapper.map(e);
+    }
+  }
 }

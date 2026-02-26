@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/locator.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/uploads_remote_data_source.dart';
 import '../../data/datasources/characters_remote_data_source.dart';
 import '../../data/repositories/characters_repository_impl.dart';
 import '../../domain/entities/character.dart';
@@ -11,6 +12,10 @@ final charactersRepositoryProvider = Provider<CharactersRepository>((ref) {
   // Feature-scoped DI (keeps core locator minimal)
   final remote = CharactersRemoteDataSource(sl<ApiClient>());
   return CharactersRepositoryImpl(remote);
+});
+
+final uploadsRemoteDataSourceProvider = Provider<UploadsRemoteDataSource>((ref) {
+  return UploadsRemoteDataSource(sl<ApiClient>());
 });
 
 final myCharactersProvider = AsyncNotifierProvider<MyCharactersController, List<CharacterEntity>>(MyCharactersController.new);

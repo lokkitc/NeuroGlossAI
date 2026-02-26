@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../../core/constants/routes.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -334,6 +336,8 @@ class ProfilePage extends ConsumerWidget {
                 const SizedBox(height: 8),
                 _InfoRow(label: 'UI theme', value: user.uiTheme ?? 'system'),
                 const SizedBox(height: 8),
+                _InfoRow(label: 'Selected theme', value: user.selectedThemeId ?? '—'),
+                const SizedBox(height: 8),
                 _InfoRow(label: 'Assistant tone', value: user.assistantTone ?? 'friendly'),
                 const SizedBox(height: 8),
                 _InfoRow(label: 'Verbosity', value: '${user.assistantVerbosity ?? 3}'),
@@ -351,6 +355,14 @@ class ProfilePage extends ConsumerWidget {
                   subtitle: const Text('Name, languages, assistant settings'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _showEditSheet(context, ref),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.palette_outlined),
+                  title: const Text('Themes'),
+                  subtitle: const Text('Select UI theme palette'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push(Routes.themeSelect),
                 ),
                 const Divider(height: 1),
                 ListTile(

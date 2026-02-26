@@ -12,6 +12,7 @@ class UserEntity extends Equatable {
     this.bio,
     this.timezone,
     this.uiTheme,
+    this.selectedThemeId,
     this.assistantTone,
     this.assistantVerbosity,
     this.preferences,
@@ -32,6 +33,7 @@ class UserEntity extends Equatable {
   final String? bio;
   final String? timezone;
   final String? uiTheme;
+  final String? selectedThemeId;
   final String? assistantTone;
   final int? assistantVerbosity;
   final Map<String, dynamic>? preferences;
@@ -53,6 +55,7 @@ class UserEntity extends Equatable {
         bio,
         timezone,
         uiTheme,
+        selectedThemeId,
         assistantTone,
         assistantVerbosity,
         preferences,

@@ -123,6 +123,16 @@ class HomePage extends ConsumerWidget {
                       onTap: () => context.go(Routes.memory),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  AnimatedListItem(
+                    index: 3,
+                    child: _QuickActionCard(
+                      title: 'Public posts',
+                      subtitle: 'Share updates with media and explore the feed.',
+                      icon: Icons.public,
+                      onTap: () => context.go(Routes.posts),
+                    ),
+                  ),
                 ],
               );
             },

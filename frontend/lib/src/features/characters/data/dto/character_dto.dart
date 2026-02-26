@@ -12,6 +12,15 @@ class CharacterDto {
     required this.description,
     required this.systemPrompt,
     required this.stylePrompt,
+    required this.avatarUrl,
+    required this.thumbnailUrl,
+    required this.bannerUrl,
+    required this.greeting,
+    required this.tags,
+    required this.voiceProvider,
+    required this.voiceId,
+    required this.voiceSettings,
+    required this.chatSettings,
     required this.isPublic,
     required this.isNsfw,
     required this.settings,
@@ -24,6 +33,15 @@ class CharacterDto {
   final String description;
   final String systemPrompt;
   final String? stylePrompt;
+  final String? avatarUrl;
+  final String? thumbnailUrl;
+  final String? bannerUrl;
+  final String? greeting;
+  final List<String>? tags;
+  final String? voiceProvider;
+  final String? voiceId;
+  final Map<String, dynamic>? voiceSettings;
+  final Map<String, dynamic>? chatSettings;
   final bool isPublic;
   final bool isNsfw;
   final Map<String, dynamic>? settings;

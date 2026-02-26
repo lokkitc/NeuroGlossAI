@@ -15,6 +15,7 @@ class UserDto {
     this.bio,
     this.timezone,
     this.uiTheme,
+    this.selectedThemeId,
     this.assistantTone,
     this.assistantVerbosity,
     this.preferences,
@@ -40,6 +41,8 @@ class UserDto {
   final String? timezone;
   @JsonKey(name: 'ui_theme')
   final String? uiTheme;
+  @JsonKey(name: 'selected_theme_id')
+  final String? selectedThemeId;
   @JsonKey(name: 'assistant_tone')
   final String? assistantTone;
   @JsonKey(name: 'assistant_verbosity')

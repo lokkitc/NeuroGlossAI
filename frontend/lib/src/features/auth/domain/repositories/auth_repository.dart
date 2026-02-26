@@ -14,6 +14,7 @@ abstract class AuthRepository {
     String? bio,
     String? timezone,
     String? uiTheme,
+    String? selectedThemeId,
     String? assistantTone,
     int? assistantVerbosity,
     Map<String, dynamic>? preferences,

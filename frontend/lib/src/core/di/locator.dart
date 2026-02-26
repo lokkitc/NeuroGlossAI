@@ -30,14 +30,17 @@ void setupLocator(Env env) {
       final dio = Dio(
         BaseOptions(
           baseUrl: env.apiRoot,
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-          sendTimeout: const Duration(seconds: 15),
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+          sendTimeout: const Duration(seconds: 30),
           headers: {
             'Accept': 'application/json',
           },
         ),
       );
+
+      // Debug: log actual URL
+      print('API Base URL: ${env.apiRoot}');
 
       dio.interceptors.add(AuthTokenInterceptor(dio, sl<TokenStorage>()));
       if (env.logNetwork) {

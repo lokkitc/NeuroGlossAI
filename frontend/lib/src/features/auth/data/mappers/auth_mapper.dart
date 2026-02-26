@@ -20,6 +20,7 @@ class AuthMapper {
       bio: dto.bio,
       timezone: dto.timezone,
       uiTheme: dto.uiTheme,
+      selectedThemeId: dto.selectedThemeId,
       assistantTone: dto.assistantTone,
       assistantVerbosity: dto.assistantVerbosity,
       preferences: dto.preferences,

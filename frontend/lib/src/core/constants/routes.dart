@@ -14,4 +14,11 @@ class Routes {
 
   // Characters
   static const characterCreate = '/characters/create';
+
+  // Posts
+  static const posts = '/home/posts';
+  static const postCreate = '/home/posts/create';
+
+  // Themes
+  static const themeSelect = '/profile/themes';
 }

@@ -12,4 +12,8 @@ class RouteNames {
   // Nested
   static const chatSession = 'chat_session';
   static const characterCreate = 'character_create';
+  static const posts = 'posts';
+  static const postCreate = 'post_create';
+
+  static const themeSelect = 'theme_select';
 }

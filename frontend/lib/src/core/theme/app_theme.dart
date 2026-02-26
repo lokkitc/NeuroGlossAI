@@ -22,14 +22,30 @@ class AppTheme {
     ),
   );
 
-  static ThemeData _build({required Brightness brightness, required ColorScheme scheme}) {
+  static ThemeData buildFromScheme({
+    required Brightness brightness,
+    required ColorScheme scheme,
+    Color? scaffoldBackgroundColor,
+  }) {
+    return _build(
+      brightness: brightness,
+      scheme: scheme,
+      scaffoldBackgroundColor: scaffoldBackgroundColor,
+    );
+  }
+
+  static ThemeData _build({
+    required Brightness brightness,
+    required ColorScheme scheme,
+    Color? scaffoldBackgroundColor,
+  }) {
     final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius));
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: scaffoldBackgroundColor ?? scheme.surface,
       visualDensity: VisualDensity.standard,
 
       pageTransitionsTheme: const PageTransitionsTheme(

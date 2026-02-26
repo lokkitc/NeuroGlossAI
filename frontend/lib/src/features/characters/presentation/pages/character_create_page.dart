@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
@@ -18,6 +19,9 @@ class _CharacterCreatePageState extends ConsumerState<CharacterCreatePage> {
   final _name = TextEditingController();
   final _system = TextEditingController(text: 'You are a helpful character.');
   final _desc = TextEditingController();
+
+  List<int>? _avatarBytes;
+  String? _avatarFilename;
 
   bool _busy = false;
   String? _error;
@@ -54,6 +58,31 @@ class _CharacterCreatePageState extends ConsumerState<CharacterCreatePage> {
                   AppTextField(controller: _desc, labelText: 'Description'),
                   const SizedBox(height: 12),
                   AppTextField(controller: _system, labelText: 'System prompt'),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Avatar',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _avatarFilename ?? 'No file selected',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: _busy ? null : _pickAvatar,
+                        child: const Text('Choose'),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   AppButton(text: _busy ? 'Creating...' : 'Create', onPressed: _busy ? null : _submit),
                 ],
@@ -72,11 +101,21 @@ class _CharacterCreatePageState extends ConsumerState<CharacterCreatePage> {
     });
 
     try {
+      String? avatarUrl;
+      if (_avatarBytes != null && _avatarFilename != null) {
+        final json = await ref.read(uploadsRemoteDataSourceProvider).uploadImage(
+              bytes: _avatarBytes!,
+              filename: _avatarFilename!,
+            );
+        avatarUrl = (json['url'] as String?)?.trim();
+      }
+
       await ref.read(charactersRepositoryProvider).create(
             slug: _slug.text.trim(),
             displayName: _name.text.trim(),
             description: _desc.text.trim(),
             systemPrompt: _system.text,
+            avatarUrl: avatarUrl,
           );
       if (!mounted) return;
       ref.read(myCharactersProvider.notifier).refresh();
@@ -85,6 +124,27 @@ class _CharacterCreatePageState extends ConsumerState<CharacterCreatePage> {
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pickAvatar() async {
+    try {
+      final res = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
+      );
+      final f = res?.files.single;
+      if (f == null) return;
+      if (f.bytes == null) {
+        setState(() => _error = 'Failed to read file bytes');
+        return;
+      }
+      setState(() {
+        _avatarBytes = f.bytes!;
+        _avatarFilename = f.name;
+      });
+    } catch (e) {
+      setState(() => _error = e.toString());
     }
   }
 }
