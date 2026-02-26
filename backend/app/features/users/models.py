@@ -38,6 +38,17 @@ class User(Base):
 
     selected_theme_id = Column(GUID, ForeignKey("themes.id", ondelete="SET NULL"), nullable=True)
 
+    selected_theme = relationship(
+        "Theme",
+        foreign_keys=[selected_theme_id],
+    )
+
+    owned_themes = relationship(
+        "Theme",
+        foreign_keys="Theme.owner_user_id",
+        back_populates="owner",
+    )
+
                           
     assistant_tone = Column(String, nullable=True, default="friendly")
     assistant_verbosity = Column(Integer, nullable=True, default=3)

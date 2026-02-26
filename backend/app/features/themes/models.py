@@ -35,4 +35,8 @@ class Theme(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    owner = relationship("User")
+    owner = relationship(
+        "User",
+        foreign_keys=[owner_user_id],
+        back_populates="owned_themes",
+    )
