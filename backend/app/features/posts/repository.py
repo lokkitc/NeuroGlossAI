@@ -35,6 +35,19 @@ class PostRepository(BaseRepository[Post]):
         res = await self.db.execute(q)
         return res.scalars().all()
 
+    async def list_public_for_character(self, character_id, *, skip: int = 0, limit: int = 50):
+        q = (
+            select(Post)
+            .options(selectinload(Post.author), selectinload(Post.character))
+            .where(Post.is_public.is_(True))
+            .where(Post.character_id == character_id)
+            .order_by(Post.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        res = await self.db.execute(q)
+        return res.scalars().all()
+
     async def list_for_author(self, author_user_id, *, skip: int = 0, limit: int = 50):
         q = (
             select(Post)

@@ -72,8 +72,17 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str | None = None
     CLOUDINARY_API_KEY: str | None = None
     CLOUDINARY_API_SECRET: str | None = None
+    UPLOAD_PROVIDER: str = "cloudinary"  # cloudinary | s3
     UPLOADS_ENABLED: bool = True
     UPLOAD_MAX_BYTES: int = 5_000_000
+
+    S3_ENDPOINT_URL: str | None = None
+    S3_REGION: str = "auto"
+    S3_BUCKET_NAME: str | None = None
+    S3_ACCESS_KEY_ID: str | None = None
+    S3_SECRET_ACCESS_KEY: str | None = None
+    S3_PUBLIC_BASE_URL: str | None = None
+    S3_USE_VIRTUAL_HOSTED_STYLE: bool = True
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod

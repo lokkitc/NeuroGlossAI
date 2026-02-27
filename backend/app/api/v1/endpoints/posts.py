@@ -36,6 +36,16 @@ async def list_public_posts_by_username(
     return await PostService(db).list_public_for_author(author_user_id=user.id, skip=skip, limit=limit)
 
 
+@router.get("/public/by-character/{character_id}", response_model=list[PostOut])
+async def list_public_posts_by_character_id(
+    character_id: UUID,
+    db: AsyncSession = Depends(deps.get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+) -> Any:
+    return await PostService(db).list_public_for_character(character_id=character_id, skip=skip, limit=limit)
+
+
 @router.get("/me", response_model=list[PostOut])
 async def list_my_posts(
     current_user: User = Depends(deps.get_current_user),

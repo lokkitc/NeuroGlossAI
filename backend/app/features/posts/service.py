@@ -27,6 +27,9 @@ class PostService:
     async def list_public_for_author(self, *, author_user_id: UUID, skip: int, limit: int):
         return await self.posts.list_public_for_author(author_user_id, skip=skip, limit=limit)
 
+    async def list_public_for_character(self, *, character_id: UUID, skip: int, limit: int):
+        return await self.posts.list_public_for_character(character_id, skip=skip, limit=limit)
+
     async def list_for_author(self, *, author_user_id: UUID, skip: int, limit: int):
         return await self.posts.list_for_author(author_user_id, skip=skip, limit=limit)
 
