@@ -1,5 +1,6 @@
 from typing import Any
 
+import logging
 from fastapi import APIRouter, Depends, UploadFile, File
 
 from app.api import deps
@@ -9,6 +10,7 @@ from app.features.uploads.service import UploadService
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/image")
@@ -20,6 +22,7 @@ async def upload_image(
         svc = UploadService()
         result = await svc.upload_image_file(image=image)
     except Exception as e:
+        logger.exception("Upload failed")
         msg = str(e)
         lowered = msg.lower()
         if "disabled" in lowered:

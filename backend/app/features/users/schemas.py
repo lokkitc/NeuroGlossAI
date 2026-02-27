@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, field_validator, Field
 from uuid import UUID
 from typing import Optional, Dict, Any
+from urllib.parse import urlparse
 
 
 class UserBase(BaseModel):
@@ -71,6 +72,40 @@ class UserResponse(UserBase):
     assistant_tone: Optional[str] = None
     assistant_verbosity: Optional[int] = None
     preferences: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("avatar_url", "thumbnail_url", "banner_url", mode="before")
+    @classmethod
+    def _normalize_storageapi_urls(cls, v):
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            v = str(v)
+        url = v.strip()
+        if not url:
+            return None
+
+        parsed = urlparse(url)
+        host = parsed.netloc
+        if not host.endswith("storageapi.dev"):
+            return url
+
+        parts = host.split(".")
+        if len(parts) < 3:
+            return url
+
+        bucket = parts[0]
+        base_host = ".".join(parts[1:])
+        path = parsed.path or ""
+        if not path.startswith("/"):
+            path = f"/{path}"
+
+        if path.startswith(f"/{bucket}/"):
+            return url
+
+        fixed = f"{parsed.scheme or 'https'}://{base_host}/{bucket}{path}"
+        if parsed.query:
+            fixed = f"{fixed}?{parsed.query}"
+        return fixed
 
     @field_validator("preferences", mode="before")
     @classmethod

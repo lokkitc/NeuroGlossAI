@@ -89,8 +89,11 @@ class UploadService:
             regions = [settings.S3_REGION, "us-east-1"] if settings.S3_REGION != "us-east-1" else [settings.S3_REGION]
 
             last_error: Exception | None = None
+            last_attempt: tuple[str, str] | None = None
+            success_attempt: tuple[str, str] | None = None
             for region_name in regions:
                 for addressing_style in addressing_styles:
+                    last_attempt = (region_name, addressing_style)
                     cfg = Config(
                         signature_version="s3v4",
                         s3={
@@ -115,6 +118,7 @@ class UploadService:
                             ACL="public-read",
                         )
                         last_error = None
+                        success_attempt = (region_name, addressing_style)
                         break
                     except ClientError as e:
                         last_error = e
@@ -136,6 +140,7 @@ class UploadService:
                                 ContentType=content_type,
                             )
                             last_error = None
+                            success_attempt = (region_name, addressing_style)
                             break
                         except ClientError as e2:
                             last_error = e2
@@ -148,9 +153,23 @@ class UploadService:
                     break
 
             if last_error is not None:
-                raise last_error
+                if isinstance(last_error, ClientError):
+                    err = last_error.response.get("Error") or {}
+                    code = err.get("Code")
+                    msg = err.get("Message")
+                    req_id = last_error.response.get("ResponseMetadata", {}).get("RequestId")
+                    region_name, addressing_style = last_attempt or ("?", "?")
+                    raise ServiceException(
+                        f"Upload failed: S3 ClientError code={code} message={msg} request_id={req_id} region={region_name} addressing_style={addressing_style}"
+                    )
 
-            public_url = self._build_public_url(bucket=bucket, key=key)
+                region_name, addressing_style = last_attempt or ("?", "?")
+                raise ServiceException(
+                    f"Upload failed: {str(last_error)} region={region_name} addressing_style={addressing_style}"
+                )
+
+            _, addressing_style = success_attempt or last_attempt or ("?", "path")
+            public_url = self._build_public_url(bucket=bucket, key=key, addressing_style=addressing_style)
 
             return {
                 "url": public_url,
@@ -163,7 +182,7 @@ class UploadService:
         except Exception as e:
             raise ServiceException(f"Upload failed: {str(e)}")
 
-    def _build_public_url(self, *, bucket: str, key: str) -> str:
+    def _build_public_url(self, *, bucket: str, key: str, addressing_style: str = "path") -> str:
         base = (settings.S3_PUBLIC_BASE_URL or "").strip().rstrip("/")
         if base:
             return f"{base}/{key}"
@@ -171,7 +190,16 @@ class UploadService:
         parsed = urlparse(settings.S3_ENDPOINT_URL or "")
         host = parsed.netloc
         scheme = parsed.scheme or "https"
-        if settings.S3_USE_VIRTUAL_HOSTED_STYLE:
+
+        # Some S3-compatible providers (including t3.storageapi.dev) commonly expose public objects via path-style URLs.
+        # If you have a dedicated public CDN/domain, set S3_PUBLIC_BASE_URL.
+        if host.endswith("storageapi.dev"):
+            base_host = host
+            if base_host.startswith(f"{bucket}."):
+                base_host = base_host[len(f"{bucket}.") :]
+            return f"{scheme}://{base_host}/{bucket}/{key}"
+
+        if addressing_style == "virtual":
             return f"{scheme}://{bucket}.{host}/{key}"
         return f"{scheme}://{host}/{bucket}/{key}"
 
