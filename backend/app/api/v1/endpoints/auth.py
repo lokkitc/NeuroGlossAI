@@ -91,4 +91,4 @@ async def cleanup_refresh_tokens(
 async def read_users_me(
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
-    return current_user
+    return UserResponse.model_validate(current_user)

@@ -61,4 +61,5 @@ async def update_user_me(
     Частичное обновление собственного профиля пользователя.
     Используйте это для настроек, информации о профиле и т.д.
     """
-    return await UserService(db).update_me(current_user=current_user, body=user_in)
+    user = await UserService(db).update_me(current_user=current_user, body=user_in)
+    return UserResponse.model_validate(user)
