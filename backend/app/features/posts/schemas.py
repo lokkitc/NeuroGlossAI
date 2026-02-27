@@ -28,10 +28,18 @@ class PostUpdate(BaseModel):
     is_public: bool | None = None
 
 
+class PostShareRequest(BaseModel):
+    is_public: bool = True
+
+
 class PostOut(BaseModel):
     id: UUID
     author_user_id: UUID
+    author_username: str | None = None
+    author_avatar_url: str | None = None
     character_id: UUID | None = None
+    character_display_name: str | None = None
+    character_avatar_url: str | None = None
     title: str
     content: str
     media: Any | None = None
