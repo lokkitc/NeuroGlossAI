@@ -2,9 +2,11 @@ import re
 import math
 import logging
 from typing import Any
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 
 from app.core.exceptions import EntityNotFoundException, ServiceException
 from app.features.common.db import begin_if_needed
@@ -24,12 +26,20 @@ from app.features.ai.ai_service import ai_service
 from app.features.chat_learning.service import ChatLearningService
 from app.core.config import settings
 from app.utils.prompt_templates import CHAT_SESSION_SUMMARY_TEMPLATE
+from app.features.posts.service import PostService
+from app.features.posts.schemas import PostCreate
+from app.features.posts.models import Post
 
 logger = logging.getLogger(__name__)
 
 
 _SELF_HARM_RE = re.compile(r"(suicide|kill myself|self-harm|end my life)", re.IGNORECASE)
 _ILLEGAL_RE = re.compile(r"(buy drugs|make a bomb|credit card fraud|hack password)", re.IGNORECASE)
+
+_AUTO_POST_IMPORTANT_RE = re.compile(
+    r"(i feel|i'm done|i am done|i can't|i cannot|i hate|i love|it hurts|broke my heart|betray|abuse|harass|threat|stalk|panic|anxiety|depress|cry|tears|hurt|trauma|обидел|предал|мне больно|ненавижу|люблю|страшно|паника|депресс|тревог)",
+    re.IGNORECASE,
+)
 
 
 class ChatService:
@@ -196,6 +206,113 @@ class ChatService:
             session.last_summary_at_turn = max_index
             self.db.add(session)
         return row
+
+    def _is_important_for_auto_post(self, *, text: str) -> bool:
+        t = (text or "").strip()
+        if not t:
+            return False
+
+        # Too short -> usually not worth a post.
+        if len(t) < 140:
+            return False
+
+        # Avoid posting obvious boilerplate.
+        lowered = t.lower()
+        if "as an ai" in lowered or "i can't help with" in lowered:
+            return False
+
+        # Heuristic: emotional / story-like content.
+        if _AUTO_POST_IMPORTANT_RE.search(t):
+            return True
+
+        # Longer messages are more likely to be meaningful.
+        return len(t) >= 320
+
+    async def _auto_post_cooldown_ok(self, *, character_id, cooldown_minutes: int, max_per_day: int) -> bool:
+        now = datetime.now(timezone.utc)
+
+        # Cooldown based on last post time.
+        last_stmt = (
+            select(Post)
+            .where(Post.character_id == character_id)
+            .order_by(Post.created_at.desc())
+            .limit(1)
+        )
+        res = await self.db.execute(last_stmt)
+        last = res.scalars().first()
+        if last is not None and getattr(last, "created_at", None) is not None:
+            try:
+                last_ts: datetime = last.created_at
+                if last_ts.tzinfo is None:
+                    last_ts = last_ts.replace(tzinfo=timezone.utc)
+                if now - last_ts < timedelta(minutes=cooldown_minutes):
+                    return False
+            except Exception:
+                pass
+
+        # Daily limit.
+        day_ago = now - timedelta(hours=24)
+        count_stmt = (
+            select(Post.id)
+            .where(Post.character_id == character_id)
+            .where(Post.created_at >= day_ago)
+        )
+        res2 = await self.db.execute(count_stmt)
+        ids = res2.scalars().all()
+        return len(ids) < int(max_per_day)
+
+    async def _maybe_create_auto_post(self, *, session: ChatSession, assistant_turn: ChatTurn) -> None:
+        # Only character sessions can auto-post as a bot.
+        if not session.character_id:
+            return
+
+        # Only for assistant turns with that character.
+        if assistant_turn.role != "assistant" or assistant_turn.character_id != session.character_id:
+            return
+
+        # Feature flag.
+        enabled = bool(getattr(settings, "AUTO_POST_ENABLED", True))
+        if not enabled:
+            return
+
+        text = (assistant_turn.content or "").strip()
+        if not self._is_important_for_auto_post(text=text):
+            return
+
+        cooldown_minutes = int(getattr(settings, "AUTO_POST_COOLDOWN_MINUTES", 30) or 30)
+        max_per_day = int(getattr(settings, "AUTO_POST_MAX_PER_DAY", 3) or 3)
+        cooldown_minutes = max(5, min(cooldown_minutes, 12 * 60))
+        max_per_day = max(1, min(max_per_day, 20))
+
+        if not await self._auto_post_cooldown_ok(
+            character_id=session.character_id,
+            cooldown_minutes=cooldown_minutes,
+            max_per_day=max_per_day,
+        ):
+            return
+
+        # Title: first line / sentence.
+        title = text.splitlines()[0].strip()
+        if len(title) > 80:
+            title = title[:77].rstrip() + "..."
+
+        # Content: capped.
+        content = text
+        if len(content) > 1200:
+            content = content[:1197].rstrip() + "..."
+
+        try:
+            body = PostCreate(
+                title=title,
+                content=content,
+                character_id=session.character_id,
+                media=None,
+                is_public=False,
+            )
+            await PostService(self.db).create_post(author_user_id=session.owner_user_id, body=body)
+        except Exception:
+            # Never break chat flow due to social posting.
+            logger.exception("Auto-post failed (session_id=%s)", str(session.id))
 
     async def _moderate(self, *, owner_user_id, session_id, turn_id, content: str) -> None:
         decision = "allow"
@@ -421,6 +538,13 @@ class ChatService:
                     await self._maybe_summarize(session)
                 except Exception:
                     pass
+
+                # Auto-post: run after assistant turn(s) are persisted.
+                for t in assistant_turns:
+                    try:
+                        await self._maybe_create_auto_post(session=session, assistant_turn=t)
+                    except Exception:
+                        pass
 
                 return {
                     "session": session,

@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 
 from app.features.common.db import BaseRepository
 from app.features.posts.models import Post, PostLike
@@ -10,13 +11,34 @@ class PostRepository(BaseRepository[Post]):
         super().__init__(Post, db)
 
     async def list_public(self, *, skip: int = 0, limit: int = 50):
-        q = select(Post).where(Post.is_public.is_(True)).order_by(Post.created_at.desc()).offset(skip).limit(limit)
+        q = (
+            select(Post)
+            .options(selectinload(Post.author), selectinload(Post.character))
+            .where(Post.is_public.is_(True))
+            .order_by(Post.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        res = await self.db.execute(q)
+        return res.scalars().all()
+
+    async def list_public_for_author(self, author_user_id, *, skip: int = 0, limit: int = 50):
+        q = (
+            select(Post)
+            .options(selectinload(Post.author), selectinload(Post.character))
+            .where(Post.is_public.is_(True))
+            .where(Post.author_user_id == author_user_id)
+            .order_by(Post.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
         res = await self.db.execute(q)
         return res.scalars().all()
 
     async def list_for_author(self, author_user_id, *, skip: int = 0, limit: int = 50):
         q = (
             select(Post)
+            .options(selectinload(Post.author), selectinload(Post.character))
             .where(Post.author_user_id == author_user_id)
             .order_by(Post.created_at.desc())
             .offset(skip)
