@@ -19,6 +19,8 @@ final uploadsRemoteDataSourceProvider = Provider<UploadsRemoteDataSource>((ref) 
 
 final publicPostsProvider = AsyncNotifierProvider<PublicPostsController, List<PostEntity>>(PublicPostsController.new);
 
+final myPostsProvider = AsyncNotifierProvider<MyPostsController, List<PostEntity>>(MyPostsController.new);
+
 class PublicPostsController extends AsyncNotifier<List<PostEntity>> {
   @override
   Future<List<PostEntity>> build() async {
@@ -36,5 +38,22 @@ class PublicPostsController extends AsyncNotifier<List<PostEntity>> {
 
   Future<void> unlike(String postId) async {
     await ref.read(postsRepositoryProvider).unlike(postId);
+  }
+}
+
+class MyPostsController extends AsyncNotifier<List<PostEntity>> {
+  @override
+  Future<List<PostEntity>> build() async {
+    return ref.read(postsRepositoryProvider).listMine();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => ref.read(postsRepositoryProvider).listMine());
+  }
+
+  Future<void> setPublic({required String postId, required bool isPublic}) async {
+    await ref.read(postsRepositoryProvider).setPublic(id: postId, isPublic: isPublic);
+    await refresh();
   }
 }

@@ -21,6 +21,7 @@ class CharacterDto {
     required this.voiceId,
     required this.voiceSettings,
     required this.chatSettings,
+    required this.chatThemeId,
     required this.isPublic,
     required this.isNsfw,
     required this.settings,
@@ -42,6 +43,7 @@ class CharacterDto {
   final String? voiceId;
   final Map<String, dynamic>? voiceSettings;
   final Map<String, dynamic>? chatSettings;
+  final String? chatThemeId;
   final bool isPublic;
   final bool isNsfw;
   final Map<String, dynamic>? settings;

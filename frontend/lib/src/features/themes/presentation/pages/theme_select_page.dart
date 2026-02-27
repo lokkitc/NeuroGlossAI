@@ -6,7 +6,7 @@ import '../controllers/theme_controllers.dart';
 
 final availableThemesProvider = FutureProvider((ref) async {
   final repo = ref.watch(themesRepositoryProvider);
-  return repo.listAvailable(skip: 0, limit: 200);
+  return repo.listAvailable(themeType: 'USER', skip: 0, limit: 200);
 });
 
 class ThemeSelectPage extends ConsumerWidget {
@@ -27,10 +27,6 @@ class ThemeSelectPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(e.toString())),
         data: (themes) {
-          if (themes.isEmpty) {
-            return const Center(child: Text('No themes available'));
-          }
-
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             itemCount: themes.length,

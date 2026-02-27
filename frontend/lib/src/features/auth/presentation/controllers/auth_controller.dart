@@ -48,14 +48,18 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = await AsyncValue.guard(() async {
       await sl.get<LoginUseCase>()(username: username, password: password);
       final user = await sl.get<GetCurrentUserUseCase>()();
-      _streamController.add(null);
+      if (!_streamController.isClosed) {
+        _streamController.add(null);
+      }
       return AuthState(isAuthenticated: true, user: user);
     });
   }
 
   Future<void> logout() async {
     await sl.get<LogoutUseCase>()();
-    _streamController.add(null);
+    if (!_streamController.isClosed) {
+      _streamController.add(null);
+    }
     state = const AsyncValue.data(AuthState(isAuthenticated: false));
   }
 
@@ -94,7 +98,9 @@ class AuthController extends AsyncNotifier<AuthState> {
             nativeLanguage: nativeLanguage,
             interests: interests,
           );
-      _streamController.add(null);
+      if (!_streamController.isClosed) {
+        _streamController.add(null);
+      }
       return AuthState(isAuthenticated: true, user: user);
     });
   }

@@ -46,7 +46,7 @@ class ThemeController extends AsyncNotifier<ThemeState> {
 
     if (selectedThemeId != null && selectedThemeId.isNotEmpty) {
       try {
-        final themes = await ref.read(themesRepositoryProvider).listAvailable(skip: 0, limit: 200);
+        final themes = await ref.read(themesRepositoryProvider).listAvailable(themeType: 'USER', skip: 0, limit: 200);
         for (final t in themes) {
           if (t.id == selectedThemeId) {
             selected = t;

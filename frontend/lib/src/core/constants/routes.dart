@@ -14,11 +14,19 @@ class Routes {
 
   // Characters
   static const characterCreate = '/characters/create';
+  static const characterDetails = '/characters/:characterId';
 
   // Posts
   static const posts = '/home/posts';
   static const postCreate = '/home/posts/create';
+  static const myPosts = '/home/posts/mine';
+
+  // People
+  static const publicUsers = '/home/users';
 
   // Themes
   static const themeSelect = '/profile/themes';
+
+  // Public profiles
+  static const publicUserProfile = '/u/:username';
 }

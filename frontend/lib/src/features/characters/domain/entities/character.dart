@@ -18,6 +18,7 @@ class CharacterEntity extends Equatable {
     required this.voiceId,
     required this.voiceSettings,
     required this.chatSettings,
+    required this.chatThemeId,
     required this.isPublic,
     required this.isNsfw,
     required this.settings,
@@ -39,6 +40,7 @@ class CharacterEntity extends Equatable {
   final String? voiceId;
   final Map<String, dynamic>? voiceSettings;
   final Map<String, dynamic>? chatSettings;
+  final String? chatThemeId;
   final bool isPublic;
   final bool isNsfw;
   final Map<String, dynamic>? settings;
@@ -61,6 +63,7 @@ class CharacterEntity extends Equatable {
         voiceId,
         voiceSettings,
         chatSettings,
+        chatThemeId,
         isPublic,
         isNsfw,
         settings,

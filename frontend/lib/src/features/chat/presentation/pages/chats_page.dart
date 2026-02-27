@@ -87,7 +87,17 @@ class ChatsPage extends ConsumerWidget {
     // Ensure we have characters to attach.
     final chars = ref.read(myCharactersProvider).valueOrNull;
     if (chars == null || chars.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Create a character first.')));
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Create a character first.'),
+          action: SnackBarAction(
+            label: 'Create',
+            onPressed: () => context.push('/characters/create'),
+          ),
+        ),
+      );
       return;
     }
 

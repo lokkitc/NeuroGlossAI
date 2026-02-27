@@ -19,6 +19,11 @@ class PostsPage extends ConsumerWidget {
         title: const Text('Posts'),
         actions: [
           IconButton(
+            onPressed: () => context.go(Routes.myPosts),
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'My posts',
+          ),
+          IconButton(
             onPressed: () => context.go(Routes.postCreate),
             icon: const Icon(Icons.add),
             tooltip: 'Create',
@@ -79,6 +84,7 @@ class PostsPage extends ConsumerWidget {
                               child: Image.network(
                                 mediaUrl,
                                 fit: BoxFit.cover,
+                                webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                                 errorBuilder: (_, __, ___) => Container(
                                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   alignment: Alignment.center,

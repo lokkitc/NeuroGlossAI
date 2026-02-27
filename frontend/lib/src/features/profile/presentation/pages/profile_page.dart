@@ -1,12 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../../core/constants/routes.dart';
+import '../../../../core/di/locator.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/network/uploads_remote_data_source.dart';
+import '../../../posts/presentation/controllers/posts_controllers.dart';
+
+final uploadsRemoteDataSourceProvider = Provider<UploadsRemoteDataSource>((ref) {
+  return UploadsRemoteDataSource(sl<ApiClient>());
+});
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
+
+  Future<String?> _pickAndUploadImage(BuildContext context, WidgetRef ref) async {
+    final res = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
+    final f = res?.files.single;
+    if (f == null) return null;
+    final bytes = f.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to read file bytes')));
+      }
+      return null;
+    }
+
+    if (!context.mounted) return null;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final json = await ref.read(uploadsRemoteDataSourceProvider).uploadImage(bytes: bytes, filename: f.name);
+      final url = (json['url'] as String?)?.trim();
+      return (url == null || url.isEmpty) ? null : url;
+    } finally {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+  }
+
+  Future<void> _changeAvatar(BuildContext context, WidgetRef ref) async {
+    try {
+      final url = await _pickAndUploadImage(context, ref);
+      if (url == null) return;
+      await ref.read(authControllerProvider.notifier).updateProfile(avatarUrl: url);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Avatar updated')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Future<void> _changeBanner(BuildContext context, WidgetRef ref) async {
+    try {
+      final url = await _pickAndUploadImage(context, ref);
+      if (url == null) return;
+      await ref.read(authControllerProvider.notifier).updateProfile(bannerUrl: url);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Banner updated')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
 
   Future<void> _showEditSheet(BuildContext context, WidgetRef ref) async {
     final auth = ref.read(authControllerProvider).valueOrNull;
@@ -309,6 +378,63 @@ class ProfilePage extends ConsumerWidget {
             xp: user.xp ?? 0,
             targetLanguage: user.targetLanguage,
             nativeLanguage: user.nativeLanguage,
+            onChangeAvatar: () => _changeAvatar(context, ref),
+            onChangeBanner: () => _changeBanner(context, ref),
+          ),
+          const SizedBox(height: 12),
+          _SectionCard(
+            title: 'My posts',
+            child: Consumer(
+              builder: (context, ref, _) {
+                final postsValue = ref.watch(myPostsProvider);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Recent',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => context.push(Routes.myPosts),
+                          child: const Text('View all'),
+                        ),
+                      ],
+                    ),
+                    postsValue.when(
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (e, _) => Text(e.toString()),
+                      data: (posts) {
+                        if (posts.isEmpty) return const Text('No posts yet');
+
+                        final preview = posts.take(3).toList(growable: false);
+                        return Column(
+                          children: [
+                            for (final p in preview) ...[
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(p.title.isEmpty ? 'Post' : p.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                subtitle: p.content.isEmpty
+                                    ? null
+                                    : Text(p.content, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                trailing: Text(p.isPublic ? 'PUBLIC' : 'PRIVATE'),
+                              ),
+                              if (p != preview.last) const Divider(height: 1),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
           const SizedBox(height: 12),
           if ((user.interests ?? const <String>[]).isNotEmpty)
@@ -390,6 +516,8 @@ class _ProfileHeader extends StatelessWidget {
     required this.xp,
     required this.targetLanguage,
     required this.nativeLanguage,
+    required this.onChangeAvatar,
+    required this.onChangeBanner,
   });
 
   final String username;
@@ -401,6 +529,8 @@ class _ProfileHeader extends StatelessWidget {
   final int xp;
   final String? targetLanguage;
   final String? nativeLanguage;
+  final VoidCallback onChangeAvatar;
+  final VoidCallback onChangeBanner;
 
   @override
   Widget build(BuildContext context) {
@@ -422,8 +552,22 @@ class _ProfileHeader extends StatelessWidget {
                     Image.network(
                       bannerUrl!.trim(),
                       fit: BoxFit.cover,
+                      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                       errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                     ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: IconButton(
+                      onPressed: onChangeBanner,
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.black.withOpacity(0.35),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      tooltip: 'Change banner',
+                    ),
+                  ),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -443,7 +587,7 @@ class _ProfileHeader extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          _Avatar(avatarUrl: avatarUrl, fallback: username),
+                          _Avatar(avatarUrl: avatarUrl, fallback: username, onChange: onChangeAvatar),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -525,10 +669,11 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.avatarUrl, required this.fallback});
+  const _Avatar({required this.avatarUrl, required this.fallback, required this.onChange});
 
   final String? avatarUrl;
   final String fallback;
+  final VoidCallback onChange;
 
   @override
   Widget build(BuildContext context) {
@@ -543,24 +688,45 @@ class _Avatar extends StatelessWidget {
         color: scheme.surface,
         border: Border.all(color: scheme.onPrimary.withOpacity(0.25), width: 1.2),
       ),
-      child: ClipOval(
-        child: url.isEmpty
-            ? Center(
-                child: Text(
-                  fallback.isEmpty ? '?' : fallback.characters.first.toUpperCase(),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                ),
-              )
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Center(
-                  child: Text(
-                    fallback.isEmpty ? '?' : fallback.characters.first.toUpperCase(),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipOval(
+              child: url.isEmpty
+                  ? Center(
+                      child: Text(
+                        fallback.isEmpty ? '?' : fallback.characters.first.toUpperCase(),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    )
+                  : Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Text(
+                          fallback.isEmpty ? '?' : fallback.characters.first.toUpperCase(),
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          Positioned(
+            right: -6,
+            bottom: -6,
+            child: IconButton(
+              onPressed: onChange,
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black.withOpacity(0.35),
+                foregroundColor: Colors.white,
               ),
+              iconSize: 18,
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Change avatar',
+            ),
+          ),
+        ],
       ),
     );
   }

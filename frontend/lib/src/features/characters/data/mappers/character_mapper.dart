@@ -20,6 +20,7 @@ class CharacterMapper {
       voiceId: dto.voiceId,
       voiceSettings: dto.voiceSettings,
       chatSettings: dto.chatSettings,
+      chatThemeId: dto.chatThemeId,
       isPublic: dto.isPublic,
       isNsfw: dto.isNsfw,
       settings: dto.settings,

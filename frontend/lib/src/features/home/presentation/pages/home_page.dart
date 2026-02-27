@@ -133,6 +133,16 @@ class HomePage extends ConsumerWidget {
                       onTap: () => context.go(Routes.posts),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  AnimatedListItem(
+                    index: 4,
+                    child: _QuickActionCard(
+                      title: 'People',
+                      subtitle: 'Find users and view public profiles.',
+                      icon: Icons.people,
+                      onTap: () => context.go(Routes.publicUsers),
+                    ),
+                  ),
                 ],
               );
             },

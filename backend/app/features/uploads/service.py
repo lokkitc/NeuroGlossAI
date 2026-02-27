@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from fastapi import UploadFile
 from fastapi.concurrency import run_in_threadpool
 
@@ -79,28 +80,75 @@ class UploadService:
 
             key = f"{folder.strip('/')}/{uuid.uuid4().hex}{ext}" if folder else f"{uuid.uuid4().hex}{ext}"
 
-            cfg = Config(
-                s3={
-                    "addressing_style": "virtual" if settings.S3_USE_VIRTUAL_HOSTED_STYLE else "path",
-                }
-            )
-            client = boto3.client(
-                "s3",
-                endpoint_url=endpoint_url,
-                region_name=settings.S3_REGION,
-                aws_access_key_id=settings.S3_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY,
-                config=cfg,
-            )
-
             content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-            client.put_object(
-                Bucket=bucket,
-                Key=key,
-                Body=data,
-                ContentType=content_type,
-                ACL="public-read",
-            )
+
+            addressing_styles = [
+                "virtual" if settings.S3_USE_VIRTUAL_HOSTED_STYLE else "path",
+                "path" if settings.S3_USE_VIRTUAL_HOSTED_STYLE else "virtual",
+            ]
+            regions = [settings.S3_REGION, "us-east-1"] if settings.S3_REGION != "us-east-1" else [settings.S3_REGION]
+
+            last_error: Exception | None = None
+            for region_name in regions:
+                for addressing_style in addressing_styles:
+                    cfg = Config(
+                        signature_version="s3v4",
+                        s3={
+                            "addressing_style": addressing_style,
+                        },
+                    )
+                    client = boto3.client(
+                        "s3",
+                        endpoint_url=endpoint_url,
+                        region_name=region_name,
+                        aws_access_key_id=settings.S3_ACCESS_KEY_ID,
+                        aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY,
+                        config=cfg,
+                    )
+
+                    try:
+                        client.put_object(
+                            Bucket=bucket,
+                            Key=key,
+                            Body=data,
+                            ContentType=content_type,
+                            ACL="public-read",
+                        )
+                        last_error = None
+                        break
+                    except ClientError as e:
+                        last_error = e
+                        code = (e.response.get("Error") or {}).get("Code")
+                        msg = (e.response.get("Error") or {}).get("Message")
+
+                        acl_not_supported = (
+                            (code or "").lower() in {"accesscontrollistnotsupported", "invalidrequest"}
+                            or "acl" in (msg or "").lower()
+                        )
+                        if not acl_not_supported:
+                            continue
+
+                        try:
+                            client.put_object(
+                                Bucket=bucket,
+                                Key=key,
+                                Body=data,
+                                ContentType=content_type,
+                            )
+                            last_error = None
+                            break
+                        except ClientError as e2:
+                            last_error = e2
+                            continue
+                    except Exception as e:
+                        last_error = e
+                        continue
+
+                if last_error is None:
+                    break
+
+            if last_error is not None:
+                raise last_error
 
             public_url = self._build_public_url(bucket=bucket, key=key)
 

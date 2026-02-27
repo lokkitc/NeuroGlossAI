@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,13 +14,18 @@ import '../features/chat/presentation/pages/chats_page.dart';
 import '../features/chat/presentation/pages/chat_session_page.dart';
 import '../features/characters/presentation/pages/characters_page.dart';
 import '../features/characters/presentation/pages/character_create_page.dart';
+import '../features/characters/presentation/pages/character_details_page.dart';
 import '../features/home/presentation/pages/home_page.dart';
 import '../features/posts/presentation/pages/posts_page.dart';
 import '../features/posts/presentation/pages/post_create_page.dart';
+import '../features/posts/presentation/pages/my_posts_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
 import '../features/themes/presentation/pages/theme_select_page.dart';
+import '../features/characters/presentation/controllers/characters_controller.dart';
+import '../features/public_users/presentation/pages/public_user_profile_page.dart';
+import '../features/public_users/presentation/pages/public_users_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
@@ -61,6 +67,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.login,
         builder: (context, state) => const LoginPage(),
       ),
+      GoRoute(
+        path: Routes.publicUserProfile,
+        name: RouteNames.publicUserProfile,
+        builder: (context, state) {
+          final username = state.pathParameters['username'] ?? '';
+          return PublicUserProfilePage(username: username);
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
         branches: [
@@ -72,10 +86,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const HomePage(),
                 routes: [
                   GoRoute(
+                    path: 'users',
+                    name: RouteNames.publicUsers,
+                    builder: (context, state) => const PublicUsersPage(),
+                  ),
+                  GoRoute(
                     path: 'posts',
                     name: RouteNames.posts,
                     builder: (context, state) => const PostsPage(),
                     routes: [
+                      GoRoute(
+                        path: 'mine',
+                        name: RouteNames.myPosts,
+                        builder: (context, state) => const MyPostsPage(),
+                      ),
                       GoRoute(
                         path: 'create',
                         name: RouteNames.postCreate,
@@ -117,6 +141,41 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: 'create',
                     name: RouteNames.characterCreate,
                     builder: (context, state) => const CharacterCreatePage(),
+                  ),
+                  GoRoute(
+                    path: ':characterId',
+                    name: RouteNames.characterDetails,
+                    builder: (context, state) {
+                      final id = state.pathParameters['characterId'] ?? '';
+                      final chars = ref.read(myCharactersProvider).valueOrNull ?? const [];
+                      final match = chars.where((c) => c.id == id).toList(growable: false);
+                      if (match.isNotEmpty) {
+                        return CharacterDetailsPage(character: match.first);
+                      }
+
+                      return Scaffold(
+                        appBar: AppBar(title: const Text('Character')),
+                        body: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('Character not found'),
+                                const SizedBox(height: 12),
+                                FilledButton(
+                                  onPressed: () {
+                                    ref.read(myCharactersProvider.notifier).refresh();
+                                    context.pop();
+                                  },
+                                  child: const Text('Back'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

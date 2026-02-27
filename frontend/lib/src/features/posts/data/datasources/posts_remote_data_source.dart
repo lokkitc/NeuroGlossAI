@@ -10,12 +10,26 @@ class PostsRemoteDataSource {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
   }
 
+  Future<List<Map<String, dynamic>>> listPublicByUsername({required String username, int skip = 0, int limit = 50}) async {
+    final list = await _client.getList('/posts/public/by-user/$username', query: {'skip': skip, 'limit': limit});
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
+  }
+
+  Future<List<Map<String, dynamic>>> listPublicByCharacter({required String characterId, int skip = 0, int limit = 50}) async {
+    final list = await _client.getList('/posts/public/by-character/$characterId', query: {'skip': skip, 'limit': limit});
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
+  }
+
   Future<List<Map<String, dynamic>>> listMine({int skip = 0, int limit = 50}) async {
     final list = await _client.getList('/posts/me', query: {'skip': skip, 'limit': limit});
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
   }
 
   Future<Map<String, dynamic>> create(Map<String, dynamic> payload) => _client.postMap('/posts/me', data: payload);
+
+  Future<Map<String, dynamic>> share({required String id, required bool isPublic}) {
+    return _client.postMap('/posts/me/$id/share', data: {'is_public': isPublic});
+  }
 
   Future<void> delete(String id) async {
     await _client.deleteMap('/posts/me/$id');
