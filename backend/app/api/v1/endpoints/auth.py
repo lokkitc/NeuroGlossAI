@@ -91,4 +91,8 @@ async def cleanup_refresh_tokens(
 async def read_users_me(
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
-    return UserResponse.model_validate(current_user)
+    resp = UserResponse.model_validate(current_user)
+    resp.avatar_url = UserResponse._normalize_storageapi_urls(resp.avatar_url)
+    resp.thumbnail_url = UserResponse._normalize_storageapi_urls(resp.thumbnail_url)
+    resp.banner_url = UserResponse._normalize_storageapi_urls(resp.banner_url)
+    return resp

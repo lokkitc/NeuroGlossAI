@@ -62,4 +62,8 @@ async def update_user_me(
     Используйте это для настроек, информации о профиле и т.д.
     """
     user = await UserService(db).update_me(current_user=current_user, body=user_in)
-    return UserResponse.model_validate(user)
+    resp = UserResponse.model_validate(user)
+    resp.avatar_url = UserResponse._normalize_storageapi_urls(resp.avatar_url)
+    resp.thumbnail_url = UserResponse._normalize_storageapi_urls(resp.thumbnail_url)
+    resp.banner_url = UserResponse._normalize_storageapi_urls(resp.banner_url)
+    return resp
