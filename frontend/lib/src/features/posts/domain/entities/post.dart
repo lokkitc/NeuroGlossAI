@@ -25,7 +25,11 @@ class PostEntity extends Equatable {
   const PostEntity({
     required this.id,
     required this.authorUserId,
+    required this.authorUsername,
+    required this.authorAvatarUrl,
     required this.characterId,
+    required this.characterDisplayName,
+    required this.characterAvatarUrl,
     required this.title,
     required this.content,
     required this.media,
@@ -35,7 +39,11 @@ class PostEntity extends Equatable {
 
   final String id;
   final String authorUserId;
+  final String? authorUsername;
+  final String? authorAvatarUrl;
   final String? characterId;
+  final String? characterDisplayName;
+  final String? characterAvatarUrl;
   final String title;
   final String content;
   final List<PostMediaEntity> media;
@@ -43,5 +51,18 @@ class PostEntity extends Equatable {
   final DateTime? createdAt;
 
   @override
-  List<Object?> get props => [id, authorUserId, characterId, title, content, media, isPublic, createdAt];
+  List<Object?> get props => [
+        id,
+        authorUserId,
+        authorUsername,
+        authorAvatarUrl,
+        characterId,
+        characterDisplayName,
+        characterAvatarUrl,
+        title,
+        content,
+        media,
+        isPublic,
+        createdAt,
+      ];
 }

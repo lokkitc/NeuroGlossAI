@@ -21,17 +21,31 @@ class PostService:
         self.posts = PostRepository(db)
         self.likes = PostLikeRepository(db)
 
+    def _attach_preview_fields(self, rows: list[Post]) -> list[Post]:
+        for row in rows:
+            if getattr(row, "author", None) is not None:
+                setattr(row, "author_username", getattr(row.author, "username", None))
+                setattr(row, "author_avatar_url", getattr(row.author, "avatar_url", None))
+            if getattr(row, "character", None) is not None:
+                setattr(row, "character_display_name", getattr(row.character, "display_name", None))
+                setattr(row, "character_avatar_url", getattr(row.character, "avatar_url", None))
+        return rows
+
     async def list_public(self, *, skip: int, limit: int):
-        return await self.posts.list_public(skip=skip, limit=limit)
+        rows = await self.posts.list_public(skip=skip, limit=limit)
+        return self._attach_preview_fields(rows)
 
     async def list_public_for_author(self, *, author_user_id: UUID, skip: int, limit: int):
-        return await self.posts.list_public_for_author(author_user_id, skip=skip, limit=limit)
+        rows = await self.posts.list_public_for_author(author_user_id, skip=skip, limit=limit)
+        return self._attach_preview_fields(rows)
 
     async def list_public_for_character(self, *, character_id: UUID, skip: int, limit: int):
-        return await self.posts.list_public_for_character(character_id, skip=skip, limit=limit)
+        rows = await self.posts.list_public_for_character(character_id, skip=skip, limit=limit)
+        return self._attach_preview_fields(rows)
 
     async def list_for_author(self, *, author_user_id: UUID, skip: int, limit: int):
-        return await self.posts.list_for_author(author_user_id, skip=skip, limit=limit)
+        rows = await self.posts.list_for_author(author_user_id, skip=skip, limit=limit)
+        return self._attach_preview_fields(rows)
 
     async def create_post(self, *, author_user_id: UUID, body: PostCreate) -> Post:
         if body.character_id is not None:

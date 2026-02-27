@@ -131,7 +131,9 @@ class PublicUserProfilePage extends ConsumerWidget {
                               final p = posts[index];
                               final mediaUrl = p.media.isNotEmpty ? p.media.first.url : null;
                               final isBotPost = (p.characterId ?? '').trim().isNotEmpty;
-                              final authorLine = isBotPost ? (p.characterId ?? 'Character') : user.username;
+                              final displayName = (isBotPost ? (p.characterDisplayName ?? '').trim() : (p.authorUsername ?? '').trim());
+                              final fallbackName = displayName.isNotEmpty ? displayName : (isBotPost ? 'Character' : user.username);
+                              final avatarUrl = (isBotPost ? p.characterAvatarUrl : p.authorAvatarUrl);
 
                               return Card(
                                 child: Padding(
@@ -139,11 +141,38 @@ class PublicUserProfilePage extends ConsumerWidget {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        authorLine,
-                                        style: baseTheme.textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 14,
+                                            child: (avatarUrl ?? '').trim().isNotEmpty
+                                                ? ClipOval(
+                                                    child: Image.network(
+                                                      avatarUrl!.trim(),
+                                                      width: 28,
+                                                      height: 28,
+                                                      fit: BoxFit.cover,
+                                                      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+                                                      errorBuilder: (_, __, ___) => Center(
+                                                        child: Text(fallbackName.characters.first.toUpperCase()),
+                                                      ),
+                                                    ),
+                                                  )
+                                                : Text(fallbackName.characters.first.toUpperCase()),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              fallbackName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: baseTheme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 6),
+                                      const SizedBox(height: 10),
                                       Text(
                                         p.title.isEmpty ? 'Post' : p.title,
                                         style: baseTheme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -161,6 +190,7 @@ class PublicUserProfilePage extends ConsumerWidget {
                                             child: Image.network(
                                               mediaUrl,
                                               fit: BoxFit.cover,
+                                              webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                                               errorBuilder: (_, __, ___) => Container(
                                                 color: scheme.surfaceContainerHighest,
                                                 alignment: Alignment.center,

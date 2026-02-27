@@ -27,7 +27,11 @@ class PostMapper {
     return PostEntity(
       id: (json['id'] ?? '').toString(),
       authorUserId: (json['author_user_id'] ?? '').toString(),
+      authorUsername: json['author_username']?.toString(),
+      authorAvatarUrl: json['author_avatar_url']?.toString(),
       characterId: json['character_id']?.toString(),
+      characterDisplayName: json['character_display_name']?.toString(),
+      characterAvatarUrl: json['character_avatar_url']?.toString(),
       title: (json['title'] ?? '').toString(),
       content: (json['content'] ?? '').toString(),
       media: media,

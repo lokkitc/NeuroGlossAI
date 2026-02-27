@@ -50,6 +50,10 @@ class PostsPage extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final p = posts[index];
                 final mediaUrl = p.media.isNotEmpty ? p.media.first.url : null;
+                final isBotPost = (p.characterId ?? '').trim().isNotEmpty;
+                final displayName = (isBotPost ? (p.characterDisplayName ?? '').trim() : (p.authorUsername ?? '').trim());
+                final fallbackName = displayName.isNotEmpty ? displayName : (isBotPost ? 'Character' : 'User');
+                final avatarUrl = (isBotPost ? p.characterAvatarUrl : p.authorAvatarUrl);
 
                 return Card(
                   child: Padding(
@@ -58,6 +62,60 @@ class PostsPage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              child: (avatarUrl ?? '').trim().isNotEmpty
+                                  ? ClipOval(
+                                      child: Image.network(
+                                        avatarUrl!.trim(),
+                                        width: 32,
+                                        height: 32,
+                                        fit: BoxFit.cover,
+                                        webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+                                        errorBuilder: (_, __, ___) => Center(
+                                          child: Text(fallbackName.characters.first.toUpperCase()),
+                                        ),
+                                      ),
+                                    )
+                                  : Text(fallbackName.characters.first.toUpperCase()),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          fallbackName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+                                        ),
+                                      ),
+                                      Text(
+                                        p.isPublic ? 'PUBLIC' : 'PRIVATE',
+                                        style: Theme.of(context).textTheme.labelSmall,
+                                      ),
+                                    ],
+                                  ),
+                                  if ((p.title).trim().isNotEmpty)
+                                    Text(
+                                      p.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
                           children: [
                             Expanded(
                               child: Text(
@@ -65,10 +123,7 @@ class PostsPage extends ConsumerWidget {
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                             ),
-                            Text(
-                              p.isPublic ? 'PUBLIC' : 'PRIVATE',
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
+                            const SizedBox.shrink(),
                           ],
                         ),
                         if (p.content.isNotEmpty) ...[

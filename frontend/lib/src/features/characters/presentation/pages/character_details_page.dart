@@ -148,7 +148,9 @@ class CharacterDetailsPage extends ConsumerWidget {
                     ),
                     error: (e, _) => Text(e.toString()),
                     data: (posts) {
-                      if (posts.isEmpty) return const Text('No posts yet');
+                      if (posts.isEmpty) {
+                        return const Text('No posts yet');
+                      }
 
                       return ListView.separated(
                         physics: const NeverScrollableScrollPhysics(),
@@ -158,6 +160,10 @@ class CharacterDetailsPage extends ConsumerWidget {
                         itemBuilder: (context, index) {
                           final p = posts[index];
                           final mediaUrl = p.media.isNotEmpty ? p.media.first.url : null;
+                          final isBotPost = (p.characterId ?? '').trim().isNotEmpty;
+                          final displayName = (isBotPost ? (p.characterDisplayName ?? '').trim() : (p.authorUsername ?? '').trim());
+                          final fallbackName = displayName.isNotEmpty ? displayName : character.displayName;
+                          final avatarUrl = (isBotPost ? p.characterAvatarUrl : p.authorAvatarUrl);
 
                           return Card(
                             child: Padding(
@@ -165,11 +171,38 @@ class CharacterDetailsPage extends ConsumerWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    character.displayName,
-                                    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 14,
+                                        child: (avatarUrl ?? '').trim().isNotEmpty
+                                            ? ClipOval(
+                                                child: Image.network(
+                                                  avatarUrl!.trim(),
+                                                  width: 28,
+                                                  height: 28,
+                                                  fit: BoxFit.cover,
+                                                  webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+                                                  errorBuilder: (_, __, ___) => Center(
+                                                    child: Text(fallbackName.characters.first.toUpperCase()),
+                                                  ),
+                                                ),
+                                              )
+                                            : Text(fallbackName.characters.first.toUpperCase()),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          fallbackName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 10),
                                   Text(
                                     p.title.isEmpty ? 'Post' : p.title,
                                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -187,6 +220,7 @@ class CharacterDetailsPage extends ConsumerWidget {
                                         child: Image.network(
                                           mediaUrl,
                                           fit: BoxFit.cover,
+                                          webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                                           errorBuilder: (_, __, ___) => Container(
                                             color: scheme.surfaceContainerHighest,
                                             alignment: Alignment.center,
