@@ -18,6 +18,28 @@ class User(Base):
 
     is_admin = Column(Boolean, nullable=False, default=False)
 
+    xp = Column(Integer, nullable=False, default=0)
+    streak = Column(Integer, nullable=False, default=0)
+    last_activity_at = Column(DateTime(timezone=True), nullable=True)
+    level = Column(Integer, nullable=False, default=1)
+
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_verified = Column(Boolean, nullable=False, default=False)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    login_count = Column(Integer, nullable=False, default=0)
+
+    is_public = Column(Boolean, nullable=False, default=False)
+    location = Column(String, nullable=True)
+    social_links = Column(JSON, default=dict)
+
+    subscription_tier = Column(String, nullable=False, default="free")
+    subscription_expires_at = Column(DateTime(timezone=True), nullable=True)
+    customer_id = Column(String, nullable=True)
+
+    last_ip = Column(String, nullable=True)
+    app_version = Column(String, nullable=True)
+    fcm_token = Column(String, nullable=True)
+
                                     
     native_language = Column(String, default="Russian")
     target_language = Column(String, default="Kazakh")

@@ -512,6 +512,23 @@ class ChatService:
                 for t in assistant_turns:
                     await self.db.refresh(t)
 
+                # Product analytics: last activity + counters + memory usage metrics.
+                now = datetime.utcnow()
+                async with begin_if_needed(self.db):
+                    session.last_activity_at = now
+                    session.turns_count = int(getattr(session, "turns_count", 0) or 0) + 1 + len(assistant_turns)
+                    session.user_turns_count = int(getattr(session, "user_turns_count", 0) or 0) + 1
+                    session.assistant_turns_count = int(getattr(session, "assistant_turns_count", 0) or 0) + len(assistant_turns)
+                    self.db.add(session)
+
+                    for mem in list(used_mem or []):
+                        try:
+                            mem.use_count = int(getattr(mem, "use_count", 0) or 0) + 1
+                            mem.last_used_at = now
+                            self.db.add(mem)
+                        except Exception:
+                            continue
+
                                  
                 try:
                     await self._maybe_summarize(session)

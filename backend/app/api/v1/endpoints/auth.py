@@ -12,7 +12,9 @@ from app.core.rate_limit import limiter
 router = APIRouter()
 
 @router.post("/register", response_model=UserResponse)
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     user_in: UserCreate,
     db: AsyncSession = Depends(deps.get_db)
 ) -> Any:
@@ -41,10 +43,16 @@ async def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    xff = request.headers.get("X-Forwarded-For")
+    ip = (xff.split(",")[0].strip() if xff else None) or (getattr(request.client, "host", None))
+    app_version = request.headers.get("X-App-Version")
     return await svc.login(
         user=user,
         session_id=request.headers.get("X-Session-Id"),
         device_id=request.headers.get("X-Device-Id"),
+        last_ip=ip,
+        app_version=app_version,
+        user_agent=request.headers.get("User-Agent"),
     )
 
 
@@ -55,7 +63,16 @@ async def refresh_access_token(
     body: RefreshTokenRequest,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    return await AuthService(db).refresh(refresh_token=body.refresh_token)
+    xff = request.headers.get("X-Forwarded-For")
+    ip = (xff.split(",")[0].strip() if xff else None) or (getattr(request.client, "host", None))
+    app_version = request.headers.get("X-App-Version")
+    user_agent = request.headers.get("User-Agent")
+    return await AuthService(db).refresh(
+        refresh_token=body.refresh_token,
+        last_ip=ip,
+        app_version=app_version,
+        user_agent=user_agent,
+    )
 
 
 @router.post("/logout")
@@ -65,7 +82,16 @@ async def logout(
     body: RefreshTokenRequest,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    return await AuthService(db).logout(refresh_token=body.refresh_token)
+    xff = request.headers.get("X-Forwarded-For")
+    ip = (xff.split(",")[0].strip() if xff else None) or (getattr(request.client, "host", None))
+    app_version = request.headers.get("X-App-Version")
+    user_agent = request.headers.get("User-Agent")
+    return await AuthService(db).logout(
+        refresh_token=body.refresh_token,
+        last_ip=ip,
+        app_version=app_version,
+        user_agent=user_agent,
+    )
 
 
 @router.post("/logout-all")

@@ -10,13 +10,24 @@ from app.core.config import settings
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_access_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
+    now = datetime.now(timezone.utc)
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    
-                                                                        
-    to_encode = {"exp": expire, "sub": str(subject)}
+        expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    to_encode: dict[str, Any] = {
+        "exp": expire,
+        "sub": str(subject),
+        "iat": now,
+        "nbf": now,
+        "jti": secrets.token_urlsafe(16),
+    }
+    if getattr(settings, "JWT_ISSUER", None):
+        to_encode["iss"] = settings.JWT_ISSUER
+    if getattr(settings, "JWT_AUDIENCE", None):
+        to_encode["aud"] = settings.JWT_AUDIENCE
+
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 

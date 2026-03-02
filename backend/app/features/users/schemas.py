@@ -40,6 +40,10 @@ class UserUpdate(BaseModel):
     banner_url: Optional[str] = None
     preferred_name: Optional[str] = None
     bio: Optional[str] = None
+
+    is_public: Optional[bool] = None
+    location: Optional[str] = None
+    social_links: Optional[Dict[str, Any]] = None
     timezone: Optional[str] = None
     ui_theme: Optional[str] = None
     selected_theme_id: Optional[UUID] = None
@@ -50,10 +54,29 @@ class UserUpdate(BaseModel):
     native_language: Optional[str] = None
     interests: Optional[list[str]] = None
 
+    fcm_token: Optional[str] = None
+
 
 class UserResponse(UserBase):
     id: UUID
     is_admin: bool = False
+
+    xp: int = 0
+    streak: int = 0
+    last_activity_at: Any | None = None
+    level: int = 1
+
+    is_active: bool = True
+    is_verified: bool = False
+    last_login_at: Any | None = None
+    login_count: int = 0
+
+    is_public: bool = False
+    location: Optional[str] = None
+    social_links: Dict[str, Any] = Field(default_factory=dict)
+
+    subscription_tier: str = "free"
+    subscription_expires_at: Any | None = None
     language_levels: Dict[str, str]
     target_language: str
     native_language: str
@@ -143,6 +166,28 @@ class AdminUserResponse(BaseModel):
     native_language: str | None = None
     target_language: str | None = None
     created_at: Any | None = None
+
+    xp: int = 0
+    streak: int = 0
+    last_activity_at: Any | None = None
+    level: int = 1
+
+    is_active: bool = True
+    is_verified: bool = False
+    last_login_at: Any | None = None
+    login_count: int = 0
+
+    is_public: bool = False
+    location: Optional[str] = None
+    social_links: Dict[str, Any] = Field(default_factory=dict)
+
+    subscription_tier: str = "free"
+    subscription_expires_at: Any | None = None
+    customer_id: Optional[str] = None
+
+    last_ip: Optional[str] = None
+    app_version: Optional[str] = None
+    fcm_token: Optional[str] = None
 
     avatar_url: Optional[str] = None
     thumbnail_url: Optional[str] = None

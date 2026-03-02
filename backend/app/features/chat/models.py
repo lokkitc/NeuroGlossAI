@@ -39,6 +39,11 @@ class ChatSession(Base):
 
     is_archived = Column(Boolean, nullable=False, default=False)
 
+    last_activity_at = Column(DateTime(timezone=True), nullable=True)
+    turns_count = Column(Integer, nullable=False, default=0)
+    user_turns_count = Column(Integer, nullable=False, default=0)
+    assistant_turns_count = Column(Integer, nullable=False, default=0)
+
                                         
     last_summary_at_turn = Column(Integer, nullable=False, default=0)
 

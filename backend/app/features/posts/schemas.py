@@ -46,5 +46,9 @@ class PostOut(BaseModel):
     is_public: bool
     created_at: Any | None = None
 
+    like_count: int = 0
+    comment_count: int = 0
+    updated_at: Any | None = None
+
     class Config:
         from_attributes = True

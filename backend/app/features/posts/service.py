@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
@@ -33,18 +35,22 @@ class PostService:
 
     async def list_public(self, *, skip: int, limit: int):
         rows = await self.posts.list_public(skip=skip, limit=limit)
+        rows = [r for r in rows if not getattr(r, "is_deleted", False)]
         return self._attach_preview_fields(rows)
 
     async def list_public_for_author(self, *, author_user_id: UUID, skip: int, limit: int):
         rows = await self.posts.list_public_for_author(author_user_id, skip=skip, limit=limit)
+        rows = [r for r in rows if not getattr(r, "is_deleted", False)]
         return self._attach_preview_fields(rows)
 
     async def list_public_for_character(self, *, character_id: UUID, skip: int, limit: int):
         rows = await self.posts.list_public_for_character(character_id, skip=skip, limit=limit)
+        rows = [r for r in rows if not getattr(r, "is_deleted", False)]
         return self._attach_preview_fields(rows)
 
     async def list_for_author(self, *, author_user_id: UUID, skip: int, limit: int):
         rows = await self.posts.list_for_author(author_user_id, skip=skip, limit=limit)
+        rows = [r for r in rows if not getattr(r, "is_deleted", False)]
         return self._attach_preview_fields(rows)
 
     async def create_post(self, *, author_user_id: UUID, body: PostCreate) -> Post:
@@ -80,11 +86,13 @@ class PostService:
 
     async def delete_post(self, *, post_id: UUID, author_user_id: UUID) -> dict[str, Any]:
         post = await self.posts.get(post_id)
-        if not post or post.author_user_id != author_user_id:
+        if not post or post.author_user_id != author_user_id or getattr(post, "is_deleted", False):
             raise EntityNotFoundException("Post", post_id)
 
         async with begin_if_needed(self.db):
-            await self.posts.delete(post_id)
+            post.is_deleted = True
+            post.deleted_at = datetime.utcnow()
+            self.db.add(post)
 
         return {"status": "ok"}
 
@@ -110,7 +118,7 @@ class PostService:
 
     async def like_post(self, *, post_id: UUID, user_id: UUID) -> dict[str, Any]:
         post = await self.posts.get(post_id)
-        if not post or not post.is_public:
+        if not post or not post.is_public or getattr(post, "is_deleted", False):
             raise EntityNotFoundException("Post", post_id)
 
         existing = await self.likes.get_by_post_and_user(post_id, user_id)
@@ -121,6 +129,8 @@ class PostService:
         try:
             async with begin_if_needed(self.db):
                 await self.likes.create(row)
+                post.like_count = int(getattr(post, "like_count", 0) or 0) + 1
+                self.db.add(post)
         except IntegrityError:
             return {"status": "ok"}
         except Exception:
@@ -130,10 +140,12 @@ class PostService:
 
     async def unlike_post(self, *, post_id: UUID, user_id: UUID) -> dict[str, Any]:
         post = await self.posts.get(post_id)
-        if not post or not post.is_public:
+        if not post or not post.is_public or getattr(post, "is_deleted", False):
             raise EntityNotFoundException("Post", post_id)
 
         async with begin_if_needed(self.db):
             await self.likes.unlike(post_id, user_id)
+            post.like_count = max(0, int(getattr(post, "like_count", 0) or 0) - 1)
+            self.db.add(post)
 
         return {"status": "ok"}

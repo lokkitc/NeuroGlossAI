@@ -18,6 +18,14 @@ class RefreshToken(Base):
     session_id = Column(String, nullable=False, index=True)
     device_id = Column(String, nullable=True, index=True)
 
+    created_ip = Column(String, nullable=True)
+    created_user_agent = Column(String, nullable=True)
+    created_app_version = Column(String, nullable=True)
+
+    last_ip = Column(String, nullable=True)
+    last_user_agent = Column(String, nullable=True)
+    last_app_version = Column(String, nullable=True)
+
     token_hash = Column(String, nullable=False, unique=True, index=True)
 
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)

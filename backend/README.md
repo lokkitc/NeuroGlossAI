@@ -355,6 +355,126 @@ docker compose exec backend pytest -q tests/test_e2e_scenarios.py::test_full_use
 
 ---
 
+## 17.1. Security & Production checklist
+
+Минимальный чеклист перед деплоем в `production`.
+
+- **Секреты**
+  - **SECRET_KEY** должен быть длинным случайным значением (не dev).
+  - Не коммитить `.env` и не печатать секреты в логи.
+- **JWT**
+  - Опционально зафиксировать `JWT_ISSUER` и `JWT_AUDIENCE` (тогда они проверяются при декодировании).
+  - Следить за временем на серверах (NTP), так как используются `iat/nbf`.
+- **CORS**
+  - В `production` указывать точные домены фронта в `BACKEND_CORS_ORIGINS`.
+  - Не использовать `*`.
+- **Rate limiting**
+  - Убедиться, что лимиты включены на `login/refresh/logout/register`.
+  - Если сервис за прокси, корректно настроить `RATE_LIMIT_TRUST_PROXY` и заголовки (`X-Forwarded-For`).
+- **Uploads (Cloudinary/S3)**
+  - Для S3 по умолчанию объекты должны быть **private** (не задавать `S3_OBJECT_ACL`).
+  - Для отдачи приватных объектов использовать **presigned URL** (`S3_RETURN_PRESIGNED_URL=true`).
+  - Ограничить размер загрузок (`UPLOAD_MAX_BYTES`) и разрешённые форматы (см. код `UploadService`).
+  - Метаданные загрузок сохраняются в таблицу `uploads` (owner_user_id + public_id), а `presign` проверяет ownership по БД.
+- **TLS/Proxy**
+  - Терминировать HTTPS на reverse proxy / LB.
+  - Добавить security headers на уровне прокси (HSTS, X-Content-Type-Options и т.п.).
+- **База данных**
+  - Выполнить `alembic upgrade head`.
+  - Настроить бэкапы.
+- **Логи и PII**
+  - Не логировать `Authorization`, refresh tokens, содержимое чатов/памяти.
+  - Проверить уровни логирования в `production`.
+
+---
+
+## 17.2. Architecture overview (high-level)
+
+Компоненты:
+
+- **FastAPI приложение** (`app/main.py`)
+  - request-id middleware
+  - rate limiting handler
+  - CORS
+  - единые exception handlers
+- **API слой** (`app/api/v1/endpoints/*`)
+  - принимает запрос
+  - валидирует вход по Pydantic
+  - вызывает сервисы
+- **Сервисы** (`app/features/*/service.py`)
+  - бизнес-логика
+  - транзакции через `begin_if_needed(db)`
+- **Репозитории** (`app/features/*/repository.py`)
+  - SQLAlchemy запросы
+  - скрывают детали хранения
+- **Модели** (`app/features/*/models.py`)
+  - ORM таблицы/связи
+- **AI провайдер** (`app/core/ai/*` + `app/features/ai/*`)
+  - внешние вызовы к LLM
+  - timeouts/лимиты/фоллбэки
+
+Поток запроса (упрощённо):
+
+1) HTTP request -> FastAPI middleware (request id)
+2) endpoint -> deps (`get_db`, `get_current_user`)
+3) service -> repository -> DB
+4) ответ/ошибка -> единый формат + `request_id`
+
+---
+
+## 17.3. Runbooks (операционные сценарии)
+
+### 17.3.1. Частые 401/"Could not validate credentials"
+
+Проверить:
+
+- токен передаётся как `Authorization: Bearer ...`
+- `SECRET_KEY` совпадает на всех инстансах (в проде)
+- если включены `JWT_ISSUER` / `JWT_AUDIENCE`, то они совпадают с тем, что кладётся при выпуске токена
+- время на серверах синхронизировано (NTP), так как используются `iat/nbf`
+
+### 17.3.2. Пользователи жалуются на "rate limited"
+
+Проверить:
+
+- вы за reverse proxy?
+  - при необходимости включить `RATE_LIMIT_TRUST_PROXY=true`
+  - убедиться, что прокси пробрасывает `X-Forwarded-For`
+- лимиты slowapi для конкретных эндпойнтов
+- добавить отдельные лимиты на уровне прокси/WAF
+
+### 17.3.3. Uploads: ссылки перестали открываться
+
+S3 presigned URL имеют TTL.
+
+Проверить:
+
+- клиент использует `GET /api/v1/uploads/presign?public_id=...` для получения новой ссылки
+- `public_id` должен принадлежать текущему пользователю (проверка ownership выполняется по таблице `uploads`)
+- `S3_PRESIGNED_URL_EXPIRES_SECONDS` выставлен разумно
+- объект приватный (по умолчанию) и это ожидаемо
+
+---
+
+## 17.4. Threat model (STRIDE-lite)
+
+Короткая модель угроз для API.
+
+- **S (Spoofing)**: подмена личности
+  - меры: JWT + refresh rotation, проверка `iss/aud` (опционально), rate limits
+- **T (Tampering)**: подмена данных
+  - меры: ownership-check на сервисах, транзакции, ограничение uploads (типы/размер)
+- **R (Repudiation)**: отрицание действий
+  - меры: `X-Request-Id` + структурированные логи
+- **I (Information disclosure)**: утечки
+  - меры: приватные uploads + presigned URLs, запрет `*` в CORS в prod, не логировать PII/tokens
+- **D (Denial of Service)**: перегрузка
+  - меры: slowapi, лимиты на AI timeouts/response sizes, рекомендован WAF/proxy throttling
+- **E (Elevation of privilege)**: повышение привилегий
+  - меры: `require_admin`, отсутствие доверия к client-provided идентификаторам без валидации
+
+---
+
 ## 18. Эндпойнты (полный список + примеры)
 
 Базовый префикс API задаётся в `Settings.API_V1_STR` и по умолчанию равен `/api/v1`.

@@ -56,6 +56,19 @@ async def request_id_middleware(request: Request, call_next):
     )
     return response
 
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    # Basic hardening headers. Prefer configuring HSTS at the reverse proxy, but keep a safe baseline here.
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
+    if settings.ENV == "production":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=15552000; includeSubDomains")
+    return response
+
                                                                                                   
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -137,7 +150,14 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_origins=cors_origins,
         allow_credentials=allow_credentials,
         allow_methods=["*"],
-        allow_headers=["*"],
+        allow_headers=[
+            "Accept",
+            "Authorization",
+            "Content-Type",
+            "X-Request-Id",
+            "X-Device-Id",
+            "X-Session-Id",
+        ],
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)

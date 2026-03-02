@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     ALGORITHM: str = "HS256"
 
+    JWT_ISSUER: str | None = None
+    JWT_AUDIENCE: str | None = None
+
                          
     ENABLE_USER_EXPORT: bool = False
     
@@ -72,6 +75,12 @@ class Settings(BaseSettings):
     S3_SECRET_ACCESS_KEY: str | None = None
     S3_PUBLIC_BASE_URL: str | None = None
     S3_USE_VIRTUAL_HOSTED_STYLE: bool = True
+
+    # Uploads privacy defaults. If S3_OBJECT_ACL is empty/None, objects are uploaded privately.
+    # You can set it to "public-read" if you explicitly want public objects.
+    S3_OBJECT_ACL: str | None = None
+    S3_RETURN_PRESIGNED_URL: bool = True
+    S3_PRESIGNED_URL_EXPIRES_SECONDS: int = 3600
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod

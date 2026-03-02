@@ -462,7 +462,7 @@ class ProfilePage extends ConsumerWidget {
                 const SizedBox(height: 8),
                 _InfoRow(label: 'UI theme', value: user.uiTheme ?? 'system'),
                 const SizedBox(height: 8),
-                _InfoRow(label: 'Selected theme', value: user.selectedThemeId ?? '—'),
+                _InfoRow(label: 'Selected theme', value: user.selectedTheme?.name ?? '—'),
                 const SizedBox(height: 8),
                 _InfoRow(label: 'Assistant tone', value: user.assistantTone ?? 'friendly'),
                 const SizedBox(height: 8),

@@ -48,31 +48,57 @@ class AuthService:
         user = await self.get_user_by_username_or_email(username)
         if not user:
             return None
+        if not getattr(user, "is_active", True):
+            return None
         if not verify_password(password, user.hashed_password):
             return None
         return user
 
-    async def login(self, *, user: User, session_id: str | None, device_id: str | None) -> dict:
+    async def login(
+        self,
+        *,
+        user: User,
+        session_id: str | None,
+        device_id: str | None,
+        last_ip: str | None = None,
+        app_version: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict:
         sid = (session_id or "").strip() or (device_id or "").strip() or str(uuid.uuid4())
+        now = datetime.utcnow()
 
         access_token = security.create_access_token(subject=user.id)
         refresh_token = security.create_refresh_token()
         refresh_hash = security.hash_refresh_token(refresh_token)
-        expires_at = datetime.utcnow() + timedelta(days=int(settings.REFRESH_TOKEN_EXPIRE_DAYS or 30))
+        expires_at = now + timedelta(days=int(settings.REFRESH_TOKEN_EXPIRE_DAYS or 30))
 
         async with begin_if_needed(self.db):
+            user.last_login_at = now
+            user.login_count = int(getattr(user, "login_count", 0) or 0) + 1
+            user.last_ip = (last_ip or "").strip() or None
+            user.app_version = (app_version or "").strip() or None
+            if getattr(user, "last_activity_at", None) is None:
+                user.last_activity_at = now
+
             await self.refresh_tokens.revoke_active_for_session(user_id=user.id, session_id=sid)
             await self.refresh_tokens.create(
                 RefreshToken(
                     user_id=user.id,
                     session_id=sid,
                     device_id=device_id,
+                    created_ip=(last_ip or "").strip() or None,
+                    created_user_agent=(user_agent or "").strip() or None,
+                    created_app_version=(app_version or "").strip() or None,
+                    last_ip=(last_ip or "").strip() or None,
+                    last_user_agent=(user_agent or "").strip() or None,
+                    last_app_version=(app_version or "").strip() or None,
                     token_hash=refresh_hash,
                     expires_at=expires_at,
                     revoked=False,
                 ),
             )
-            await self.refresh_tokens.enforce_active_session_limit(user_id=user.id, limit=10, now=datetime.utcnow())
+            await self.refresh_tokens.enforce_active_session_limit(user_id=user.id, limit=10, now=now)
+            await self.db.flush()
 
         return {
             "access_token": access_token,
@@ -81,7 +107,14 @@ class AuthService:
             "session_id": sid,
         }
 
-    async def refresh(self, *, refresh_token: str) -> dict:
+    async def refresh(
+        self,
+        *,
+        refresh_token: str,
+        last_ip: str | None = None,
+        app_version: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict:
         now = datetime.utcnow()
         token_hash = security.hash_refresh_token(refresh_token)
         legacy_hash = security.legacy_hash_refresh_token(refresh_token)
@@ -107,6 +140,12 @@ class AuthService:
             user_id=rt.user_id,
             session_id=rt.session_id,
             device_id=rt.device_id,
+            created_ip=getattr(rt, "created_ip", None),
+            created_user_agent=getattr(rt, "created_user_agent", None),
+            created_app_version=getattr(rt, "created_app_version", None),
+            last_ip=(last_ip or "").strip() or getattr(rt, "last_ip", None),
+            last_user_agent=(user_agent or "").strip() or getattr(rt, "last_user_agent", None),
+            last_app_version=(app_version or "").strip() or getattr(rt, "last_app_version", None),
             token_hash=new_hash,
             expires_at=new_expires_at,
             revoked=False,
@@ -115,6 +154,9 @@ class AuthService:
         async with begin_if_needed(self.db):
             await self.refresh_tokens.create(new_row)
             rt.last_used_at = now
+            rt.last_ip = (last_ip or "").strip() or getattr(rt, "last_ip", None)
+            rt.last_user_agent = (user_agent or "").strip() or getattr(rt, "last_user_agent", None)
+            rt.last_app_version = (app_version or "").strip() or getattr(rt, "last_app_version", None)
             await self.refresh_tokens.revoke(token=rt, replaced_by_id=new_row.id)
             await self.refresh_tokens.enforce_active_session_limit(user_id=rt.user_id, limit=10, now=now)
 
@@ -126,7 +168,14 @@ class AuthService:
             "session_id": rt.session_id,
         }
 
-    async def logout(self, *, refresh_token: str) -> dict:
+    async def logout(
+        self,
+        *,
+        refresh_token: str,
+        last_ip: str | None = None,
+        app_version: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict:
         now = datetime.utcnow()
         token_hash = security.hash_refresh_token(refresh_token)
         legacy_hash = security.legacy_hash_refresh_token(refresh_token)
@@ -139,6 +188,9 @@ class AuthService:
 
         async with begin_if_needed(self.db):
             rt.last_used_at = now
+            rt.last_ip = (last_ip or "").strip() or getattr(rt, "last_ip", None)
+            rt.last_user_agent = (user_agent or "").strip() or getattr(rt, "last_user_agent", None)
+            rt.last_app_version = (app_version or "").strip() or getattr(rt, "last_app_version", None)
             await self.refresh_tokens.revoke(token=rt)
 
         return {"status": "ok"}

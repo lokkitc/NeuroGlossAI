@@ -22,7 +22,18 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        decode_kwargs = {}
+        if getattr(settings, "JWT_AUDIENCE", None):
+            decode_kwargs["audience"] = settings.JWT_AUDIENCE
+        if getattr(settings, "JWT_ISSUER", None):
+            decode_kwargs["issuer"] = settings.JWT_ISSUER
+
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            **decode_kwargs,
+        )
         sub: str = payload.get("sub")
         if sub is None:
             raise credentials_exception
@@ -39,6 +50,9 @@ async def get_current_user(
     
     if user is None:
         raise credentials_exception
+
+    if not getattr(user, "is_active", True):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
     return user
 
 
