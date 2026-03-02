@@ -48,13 +48,3 @@ async def require_admin(
     if not getattr(current_user, "is_admin", False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
-
-                              
-from app.features.learning.service import LearningService
-from app.features.course.service import CourseService
-
-async def get_learning_service(db: AsyncSession = Depends(get_db)) -> LearningService:
-    return LearningService(db)
-
-async def get_course_service(db: AsyncSession = Depends(get_db)) -> CourseService:
-    return CourseService(db)

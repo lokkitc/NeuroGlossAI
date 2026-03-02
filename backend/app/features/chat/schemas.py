@@ -31,8 +31,6 @@ class ChatSessionOut(BaseModel):
     owner_user_id: UUID
     character_id: UUID | None = None
     room_id: UUID | None = None
-    enrollment_id: UUID | None = None
-    active_level_template_id: UUID | None = None
     title: str
     is_archived: bool
 

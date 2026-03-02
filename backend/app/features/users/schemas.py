@@ -53,7 +53,6 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: UUID
-    xp: int
     is_admin: bool = False
     language_levels: Dict[str, str]
     target_language: str
@@ -141,7 +140,6 @@ class AdminUserResponse(BaseModel):
     username: str
     email: EmailStr
     is_admin: bool = False
-    xp: int = 0
     native_language: str | None = None
     target_language: str | None = None
     created_at: Any | None = None

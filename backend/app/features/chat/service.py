@@ -23,7 +23,6 @@ from app.features.chat.repository import (
 )
 from app.features.memory.repository import MemoryRepository
 from app.features.ai.ai_service import ai_service
-from app.features.chat_learning.service import ChatLearningService
 from app.core.config import settings
 from app.utils.prompt_templates import CHAT_SESSION_SUMMARY_TEMPLATE
 from app.features.posts.service import PostService
@@ -512,26 +511,6 @@ class ChatService:
                 await self.db.refresh(user_turn)
                 for t in assistant_turns:
                     await self.db.refresh(t)
-
-                                                                                            
-                try:
-                    if bool(getattr(settings, "CHAT_LEARNING_ENABLED", True)):
-                        every = int(getattr(settings, "CHAT_LEARNING_EVERY_USER_TURNS", 10) or 10)
-                        window = int(getattr(settings, "CHAT_LEARNING_TURN_WINDOW", 80) or 80)
-                        every = max(1, min(every, 50))
-                        window = max(10, min(window, 120))
-
-                        last_at = int(getattr(session, "last_learning_lesson_at_turn", 0) or 0)
-                                                                                                      
-                        if (user_turn.turn_index - last_at) >= (every * 2):
-                            await ChatLearningService(self.db).generate_lesson_for_session(
-                                owner_user_id=owner_user_id,
-                                chat_session_id=session_id,
-                                turn_window=window,
-                                generation_mode="balanced",
-                            )
-                except Exception:
-                    pass
 
                                  
                 try:

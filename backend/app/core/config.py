@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     ENV: str = "development"                                      
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+
+    RATE_LIMIT_TRUST_PROXY: bool = False
     
                  
     DATABASE_URL: str
@@ -55,19 +57,6 @@ class Settings(BaseSettings):
 
           
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
-
-                                                      
-    CHAT_LEARNING_ENABLED: bool = True
-    CHAT_LEARNING_EVERY_USER_TURNS: int = 10
-    CHAT_LEARNING_TURN_WINDOW: int = 80
-
-                                                                  
-    ENABLE_LEGACY_PATH: bool = False
-    ENABLE_LEGACY_LESSONS: bool = False
-    ENABLE_LEGACY_VOCABULARY: bool = False
-    ENABLE_LEGACY_ROLEPLAY: bool = False
-    ENABLE_LEGACY_GAMIFICATION: bool = False
-    ENABLE_LEGACY_ADMIN: bool = False
 
     CLOUDINARY_CLOUD_NAME: str | None = None
     CLOUDINARY_API_KEY: str | None = None

@@ -23,7 +23,6 @@ class User(Base):
     target_language = Column(String, default="Kazakh")
 
                   
-    xp = Column(Integer, default=0)
     language_levels = Column(JSON, default=dict)                                     
     interests = Column(JSON, default=list)                                 
 
@@ -56,4 +55,4 @@ class User(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    streaks = relationship("Streak", back_populates="user")
+    

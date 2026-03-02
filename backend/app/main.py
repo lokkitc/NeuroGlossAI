@@ -12,8 +12,6 @@ from app.core.config import settings
 from app.api.v1.router import api_router
 from app.core.exceptions import NeuroGlossException
 from app.core.rate_limit import limiter
-from app.core.events.base import event_bus, LevelCompletedEvent
-from app.core.events.listeners import XPListener, AchievementListener
 from app.core.database import AsyncSessionLocal
 import logging
 from app.core.logging_json import JsonFormatter
@@ -29,10 +27,6 @@ root_logger.addHandler(handler)
 root_logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
 logger = logging.getLogger(__name__)
-
-                                
-event_bus.subscribe(LevelCompletedEvent, XPListener())
-event_bus.subscribe(LevelCompletedEvent, AchievementListener())
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

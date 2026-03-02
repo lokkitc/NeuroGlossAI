@@ -1,10 +1,11 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.api import deps
+from app.core.rate_limit import limiter
 from app.features.users.models import User
 from app.features.chat.schemas import ChatSessionCreate, ChatSessionOut, ChatSessionDetail, ChatTurnCreate, ChatTurnResponse
 from app.features.chat.service import ChatService
@@ -49,7 +50,9 @@ async def get_session(
 
 
 @router.post("/sessions/{session_id}/turn", response_model=ChatTurnResponse)
+@limiter.limit("30/minute")
 async def create_turn(
+    request: Request,
     session_id: UUID,
     body: ChatTurnCreate,
     current_user: User = Depends(deps.get_current_user),

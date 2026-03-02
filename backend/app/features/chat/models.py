@@ -35,9 +35,6 @@ class ChatSession(Base):
     room_id = Column(GUID, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
 
                                                                    
-    enrollment_id = Column(GUID, ForeignKey("enrollments.id", ondelete="SET NULL"), nullable=True)
-    active_level_template_id = Column(GUID, ForeignKey("course_level_templates.id", ondelete="SET NULL"), nullable=True)
-
     title = Column(String, nullable=False, default="")
 
     is_archived = Column(Boolean, nullable=False, default=False)
@@ -46,17 +43,12 @@ class ChatSession(Base):
     last_summary_at_turn = Column(Integer, nullable=False, default=0)
 
                                                                        
-    last_learning_lesson_at_turn = Column(Integer, nullable=False, default=0)
-
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     owner = relationship("User")
     character = relationship("Character")
     room = relationship("Room")
-
-    enrollment = relationship("Enrollment")
-    active_level_template = relationship("CourseLevelTemplate")
 
     turns = relationship(
         "ChatTurn",

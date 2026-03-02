@@ -1,10 +1,11 @@
 from typing import Any
 
 import logging
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, Request
 
 from app.api import deps
 from app.core.exceptions import NeuroGlossException
+from app.core.rate_limit import limiter
 from app.features.users.models import User
 from app.features.uploads.service import UploadService
 
@@ -14,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/image")
+@limiter.limit("10/minute")
 async def upload_image(
+    request: Request,
     current_user: User = Depends(deps.get_current_user),
     image: UploadFile = File(...),
 ) -> Any:
@@ -33,7 +36,7 @@ async def upload_image(
             raise NeuroGlossException(status_code=400, code="invalid_upload", detail="Empty file")
         if "too large" in lowered:
             raise NeuroGlossException(status_code=413, code="payload_too_large", detail="File too large")
-        raise NeuroGlossException(status_code=500, code="upload_failed", detail=msg)
+        raise NeuroGlossException(status_code=500, code="upload_failed", detail="Upload failed")
 
     return {
         "url": result.get("secure_url") or result.get("url"),
