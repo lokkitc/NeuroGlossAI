@@ -1,7 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, Integer, JSON, String, UniqueConstraint, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, DateTime, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.sql import func
 
 from app.models.base import Base
@@ -31,9 +30,6 @@ class AIGenerationEvent(Base):
 
     id = Column(GUID, primary_key=True, default=uuid.uuid4)
 
-    enrollment_id = Column(GUID, ForeignKey("enrollments.id", ondelete="SET NULL"), nullable=True)
-    generated_lesson_id = Column(GUID, ForeignKey("generated_lessons.id", ondelete="SET NULL"), nullable=True)
-
     operation = Column(String, nullable=False, default="")
     provider = Column(String, nullable=True)
     model = Column(String, nullable=True)
@@ -47,5 +43,3 @@ class AIGenerationEvent(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    enrollment = relationship("Enrollment")
-    generated_lesson = relationship("GeneratedLesson")

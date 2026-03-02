@@ -62,6 +62,9 @@ def upgrade() -> None:
     # Remove columns from existing tables.
     op.execute(sa.text("ALTER TABLE IF EXISTS users DROP COLUMN IF EXISTS xp CASCADE"))
 
+    op.execute(sa.text("ALTER TABLE IF EXISTS ai_generation_events DROP COLUMN IF EXISTS enrollment_id CASCADE"))
+    op.execute(sa.text("ALTER TABLE IF EXISTS ai_generation_events DROP COLUMN IF EXISTS generated_lesson_id CASCADE"))
+
     op.execute(sa.text("ALTER TABLE IF EXISTS chat_sessions DROP COLUMN IF EXISTS enrollment_id CASCADE"))
     op.execute(sa.text("ALTER TABLE IF EXISTS chat_sessions DROP COLUMN IF EXISTS active_level_template_id CASCADE"))
     op.execute(sa.text("ALTER TABLE IF EXISTS chat_sessions DROP COLUMN IF EXISTS last_learning_lesson_at_turn CASCADE"))
