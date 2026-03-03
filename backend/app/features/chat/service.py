@@ -67,6 +67,13 @@ class ChatService:
             raise ServiceException("Provide exactly one of character_id or room_id")
 
         if character_id:
+            existing = await self.sessions.get_singleton_for_character(
+                owner_user_id=owner_user_id,
+                character_id=character_id,
+            )
+            if existing:
+                return existing
+
             ch = await self.characters.get(character_id)
             if not ch:
                 raise EntityNotFoundException("Character", character_id)

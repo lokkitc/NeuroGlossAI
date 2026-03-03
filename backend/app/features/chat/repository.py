@@ -34,6 +34,18 @@ class ChatSessionRepository(BaseRepository[ChatSession]):
         res = await self.db.execute(q)
         return res.scalars().first()
 
+    async def get_singleton_for_character(self, *, owner_user_id, character_id):
+        q = (
+            select(ChatSession)
+            .where(ChatSession.owner_user_id == owner_user_id)
+            .where(ChatSession.character_id == character_id)
+            .where(ChatSession.is_archived.is_(False))
+            .order_by(ChatSession.updated_at.desc())
+            .limit(1)
+        )
+        res = await self.db.execute(q)
+        return res.scalars().first()
+
     async def next_turn_index(self, session_id) -> int:
         q = select(func.max(ChatTurn.turn_index)).where(ChatTurn.session_id == session_id)
         res = await self.db.execute(q)
