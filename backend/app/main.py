@@ -157,6 +157,7 @@ if settings.BACKEND_CORS_ORIGINS:
             "X-Request-Id",
             "X-Device-Id",
             "X-Session-Id",
+            "X-App-Version",
         ],
     )
 

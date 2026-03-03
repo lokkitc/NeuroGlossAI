@@ -9,13 +9,25 @@
 
 from typing import Any
 from fastapi import APIRouter, Depends
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
+from app.core.config import settings
+from app.core.exceptions import NeuroGlossException
 from app.features.users.schemas import UserResponse, UserUpdateLanguages, UserUpdate
 from app.features.users.models import User
 from app.features.users.service import UserService
 
 router = APIRouter()
+
+
+@router.get("/me/export")
+async def export_me(
+    current_user: User = Depends(deps.require_subscription_feature("exports")),
+) -> Any:
+    if not bool(getattr(settings, "ENABLE_USER_EXPORT", False)):
+        raise NeuroGlossException(status_code=403, code="feature_disabled", detail="Export is disabled")
+    return jsonable_encoder(current_user)
 
 @router.put("/me/languages", response_model=UserResponse)
 async def update_languages(

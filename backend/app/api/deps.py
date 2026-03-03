@@ -5,10 +5,51 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core import security
 from app.core.config import settings
+from app.core.exceptions import NeuroGlossException
 from app.core.database import get_db
 from app.features.users.models import User
 from app.features.users.schemas import TokenData
 from uuid import UUID
+
+
+def subscription_features_for_tier(tier: str) -> dict[str, bool]:
+    t = (tier or "").strip().lower() or "free"
+    if t == "pro":
+        return {
+            "ai_unlimited": True,
+            "srs_priority": True,
+            "exports": True,
+            "themes_premium": True,
+        }
+    if t == "plus":
+        return {
+            "ai_unlimited": False,
+            "srs_priority": True,
+            "exports": True,
+            "themes_premium": True,
+        }
+    return {
+        "ai_unlimited": False,
+        "srs_priority": False,
+        "exports": False,
+        "themes_premium": False,
+    }
+
+
+def require_subscription_feature(feature: str):
+    async def _dep(current_user: User = Depends(get_current_user)) -> User:
+        tier = (getattr(current_user, "subscription_tier", None) or "free").strip() or "free"
+        features = subscription_features_for_tier(tier)
+        if not bool(features.get(feature)):
+            raise NeuroGlossException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                code="subscription_required",
+                detail="Subscription feature required",
+                details={"feature": feature, "tier": tier},
+            )
+        return current_user
+
+    return _dep
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
