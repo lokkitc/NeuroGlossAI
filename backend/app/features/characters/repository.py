@@ -32,3 +32,8 @@ class CharacterRepository(BaseRepository[Character]):
         q = q.order_by(Character.created_at.desc()).offset(skip).limit(limit)
         res = await self.db.execute(q)
         return res.scalars().all()
+
+    async def get_public(self, character_id) -> Character | None:
+        q = select(Character).where(Character.id == character_id).where(Character.is_public.is_(True))
+        res = await self.db.execute(q)
+        return res.scalars().first()

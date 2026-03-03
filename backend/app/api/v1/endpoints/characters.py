@@ -33,6 +33,14 @@ async def list_public_characters(
     return await CharacterService(db).list_public(skip=skip, limit=limit, nsfw=nsfw)
 
 
+@router.get("/public/{character_id}", response_model=CharacterOut)
+async def get_public_character(
+    character_id: UUID,
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    return await CharacterService(db).get_public(character_id=character_id)
+
+
 @router.post("/me", response_model=CharacterOut)
 async def create_character(
     body: CharacterCreate,

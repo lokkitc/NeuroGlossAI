@@ -21,6 +21,12 @@ class CharacterService:
     async def list_public(self, *, skip: int, limit: int, nsfw: bool | None):
         return await self.characters.list_public(skip=skip, limit=limit, nsfw=nsfw)
 
+    async def get_public(self, *, character_id: UUID) -> Character:
+        ch = await self.characters.get_public(character_id)
+        if not ch:
+            raise EntityNotFoundException("Character", character_id)
+        return ch
+
     async def create_character(self, *, owner_user_id: UUID, body: CharacterCreate) -> Character:
         row = Character(
             owner_user_id=owner_user_id,
