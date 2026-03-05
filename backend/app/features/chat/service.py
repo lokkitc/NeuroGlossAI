@@ -21,6 +21,7 @@ from app.features.chat.repository import (
 from app.features.characters.repository import CharacterRepository
 from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
 from app.features.memory.repository import MemoryRepository
+from app.features.memory.models import MemoryItem
 from app.features.ai.ai_service import ai_service
 from app.core.config import settings
 from app.utils.prompt_templates import CHAT_SESSION_SUMMARY_TEMPLATE, CHARACTER_ROLEPLAY_ACTIONS_TEMPLATE
