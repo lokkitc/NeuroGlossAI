@@ -109,10 +109,10 @@ Rules:
 - It is allowed to return only action or only dialogue.
 
 Output JSON format:
-{
+{{
   "action": "...",
   "dialogue": "..."
-}
+}}
 """
 
 
