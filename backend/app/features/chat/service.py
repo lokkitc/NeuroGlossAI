@@ -10,7 +10,8 @@ from sqlalchemy import select
 
 from app.core.exceptions import EntityNotFoundException, ServiceException
 from app.features.common.db import begin_if_needed
-from app.features.chat.models import ChatSession, ChatTurn, ChatSessionSummary, ModerationEvent, RoomParticipant
+from app.features.rooms.models import RoomParticipant
+from app.features.chat.models import ChatSession, ChatTurn, ChatSessionSummary, ModerationEvent
 from app.features.chat.repository import (
     ChatSessionRepository,
     ChatTurnRepository,
