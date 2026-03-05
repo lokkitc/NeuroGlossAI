@@ -1,4 +1,5 @@
 from typing import Any
+from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -31,17 +32,17 @@ class AdminSetSubscriptionRequest(BaseModel):
 
 
 class SubscriptionHistoryItem(BaseModel):
-    id: str
-    user_id: str
+    id: UUID
+    user_id: UUID
     tier: str
     status: str
-    started_at: Any | None = None
-    expires_at: Any | None = None
-    ended_at: Any | None = None
+    started_at: datetime | None = None
+    expires_at: datetime | None = None
+    ended_at: datetime | None = None
     provider: str | None = None
     external_customer_id: str | None = None
     external_subscription_id: str | None = None
-    created_at: Any | None = None
+    created_at: datetime | None = None
 
     class Config:
         from_attributes = True
