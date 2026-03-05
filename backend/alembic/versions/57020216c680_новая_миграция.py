@@ -67,7 +67,6 @@ def upgrade() -> None:
     sa.Column('light_tokens', sa.JSON(), nullable=True),
     sa.Column('dark_tokens', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.ForeignKeyConstraint(['owner_user_id'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_themes_owner', 'themes', ['owner_user_id'], unique=False)
@@ -108,11 +107,28 @@ def upgrade() -> None:
     sa.Column('assistant_verbosity', sa.Integer(), nullable=True),
     sa.Column('preferences', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.ForeignKeyConstraint(['selected_theme_id'], ['themes.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
+
+    op.create_foreign_key(
+        'fk_themes_owner_user_id_users',
+        'themes',
+        'users',
+        ['owner_user_id'],
+        ['id'],
+        ondelete='SET NULL',
+    )
+    op.create_foreign_key(
+        'fk_users_selected_theme_id_themes',
+        'users',
+        'themes',
+        ['selected_theme_id'],
+        ['id'],
+        ondelete='SET NULL',
+    )
+
     op.create_table('characters',
     sa.Column('id', GUID(), nullable=False),
     sa.Column('owner_user_id', GUID(), nullable=False),
