@@ -1,0 +1,66 @@
+:root {
+  --ng-bg: #0b0f17;
+  --ng-panel: #121826;
+  --ng-panel-2: #161f30;
+  --ng-border: rgba(255, 255, 255, 0.10);
+
+  --ng-chrome: var(--ng-panel);
+
+  --ng-text: rgba(255, 255, 255, 0.92);
+  --ng-muted: rgba(255, 255, 255, 0.68);
+  --ng-faint: rgba(255, 255, 255, 0.45);
+
+  --ng-primary: #7c3aed;
+  --ng-primary-2: #7c3aed;
+  --ng-danger: #ef4444;
+
+  --ng-primary-soft: #241634;
+  --ng-primary-border: #3b1f68;
+
+  --ng-danger-soft: #2a1416;
+  --ng-danger-border: #6b1f23;
+
+  --ng-radius: 16px;
+  --ng-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+
+  --ng-space-1: 6px;
+  --ng-space-2: 10px;
+  --ng-space-3: 14px;
+  --ng-space-4: 18px;
+  --ng-space-5: 24px;
+  --ng-space-6: 32px;
+
+  --ng-maxw: 1120px;
+
+  --ng-sidebar-w: 264px;
+  --ng-sidebar-w-collapsed: 80px;
+
+  --ng-font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+  --ng-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --ng-fs-xxs: 11px;
+  --ng-fs-xs: 12px;
+  --ng-fs-sm: 13px;
+  --ng-fs-md: 14px;
+  --ng-fs-lg: 16px;
+  --ng-fs-xl: 18px;
+  --ng-fs-2xl: 22px;
+  --ng-fs-3xl: 24px;
+
+  --ng-fw-regular: 400;
+  --ng-fw-medium: 500;
+  --ng-fw-semibold: 600;
+  --ng-fw-bold: 700;
+
+  --ng-lh-tight: 1.18;
+  --ng-lh-normal: 1.45;
+  --ng-lh-relaxed: 1.6;
+
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    scroll-behavior: auto;
+  }
+}

@@ -1,0 +1,42 @@
+.primary {
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ng-text);
+  background: var(--ng-primary);
+}
+
+.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ghost {
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ng-text);
+  background: var(--ng-panel);
+}
+
+.ghost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.danger {
+  appearance: none;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ng-text);
+  background: var(--ng-danger-soft);
+}

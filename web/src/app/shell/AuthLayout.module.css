@@ -1,0 +1,24 @@
+.root {
+  min-height: 100vh;
+}
+
+.main {
+  padding: 48px 18px;
+  display: flex;
+  justify-content: center;
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  border-radius: var(--ng-radius);
+  border: 0;
+  background: var(--ng-panel);
+  box-shadow: var(--ng-shadow);
+  padding: 18px;
+}
+
+.brand {
+  font-weight: 900;
+  margin-bottom: 14px;
+}

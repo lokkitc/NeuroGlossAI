@@ -1,0 +1,103 @@
+.root {
+  display: grid;
+  gap: 14px;
+}
+
+.hero {
+  display: grid;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0.2px;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--ng-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.characterCard {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.characterClickArea {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  display: grid;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.characterClickArea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.18);
+  border-radius: 12px;
+}
+
+.characterTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.characterName {
+  font-weight: 800;
+}
+
+.characterSlug {
+  color: var(--ng-faint);
+  font-size: 12px;
+}
+
+.characterDesc {
+  color: var(--ng-muted);
+  line-height: 1.35;
+  min-height: 38px;
+}
+
+.characterMeta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  background: var(--ng-panel-2);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--ng-muted);
+}
+
+.characterActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

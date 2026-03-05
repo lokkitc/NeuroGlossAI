@@ -437,12 +437,20 @@ class ChatService:
 
         messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
         for t in recent:
+            content = t.content
+            try:
+                kind = (t.meta or {}).get("kind") if isinstance(getattr(t, "meta", None), dict) else None
+                if kind == "action" and (content or "").strip():
+                    content = f"*{content.strip()}*"
+            except Exception:
+                content = t.content
+
             if t.role == "user":
-                messages.append({"role": "user", "content": t.content})
+                messages.append({"role": "user", "content": content})
             elif t.role in {"assistant", "director"}:
-                messages.append({"role": "assistant", "content": t.content})
+                messages.append({"role": "assistant", "content": content})
             else:
-                messages.append({"role": "assistant", "content": t.content})
+                messages.append({"role": "assistant", "content": content})
 
         messages.append({"role": "user", "content": user_message})
         return messages, (pinned + relevant), room_participants_by_name, temperature

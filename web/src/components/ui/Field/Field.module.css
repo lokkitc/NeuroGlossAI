@@ -1,0 +1,26 @@
+.root {
+  display: grid;
+  gap: 6px;
+}
+
+.top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.label {
+  font-weight: 700;
+  color: var(--ng-text);
+}
+
+.hint {
+  color: var(--ng-faint);
+  font-size: 12px;
+}
+
+.error {
+  color: var(--ng-danger);
+  font-size: 13px;
+}

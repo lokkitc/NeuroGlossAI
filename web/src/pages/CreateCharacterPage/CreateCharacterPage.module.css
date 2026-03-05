@@ -1,0 +1,62 @@
+.root {
+  display: grid;
+  gap: 14px;
+}
+
+.header {
+  display: grid;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+}
+
+.subtitle {
+  color: var(--ng-muted);
+}
+
+.card {
+  padding: 14px;
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.toggles {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.toggle {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--ng-muted);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.error {
+  color: var(--ng-danger);
+  white-space: pre-wrap;
+}
+
+@media (max-width: 720px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}

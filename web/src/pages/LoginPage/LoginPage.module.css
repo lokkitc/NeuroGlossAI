@@ -1,0 +1,24 @@
+.card {
+  padding: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.form {
+  margin-top: var(--ng-space-4);
+  display: grid;
+  gap: var(--ng-space-3);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.error {
+  color: var(--ng-danger);
+}

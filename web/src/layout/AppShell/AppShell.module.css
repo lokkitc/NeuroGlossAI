@@ -1,0 +1,88 @@
+.root {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.content {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--ng-chrome);
+}
+.headerBottom {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+  height: 15px;
+  background: var(--ng-bg);
+}
+.headerInner {
+  max-width: var(--ng-maxw);
+  margin: 0 auto;
+  padding: var(--ng-space-3) var(--ng-space-5);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ng-space-4);
+}
+
+.searchWrap {
+  min-width: 0;
+}
+
+.search {
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--ng-space-4);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--ng-panel-2);
+  color: var(--ng-text);
+  outline: none;
+}
+
+.search:focus {
+  border-color: var(--ng-primary-border);
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--ng-space-3);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+}
+
+.main {
+  padding: var(--ng-space-5) 0;
+}
+
+.container {
+  max-width: var(--ng-maxw);
+  margin: 0 auto;
+  padding: 0 var(--ng-space-5);
+}
+
+@media (max-width: 980px) {
+  .headerInner {
+    padding: var(--ng-space-3) var(--ng-space-4);
+  }
+
+  .container {
+    padding: 0 var(--ng-space-4);
+  }
+}

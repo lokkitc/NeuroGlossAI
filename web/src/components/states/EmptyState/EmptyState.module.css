@@ -1,0 +1,12 @@
+.card {
+  padding: 14px;
+}
+
+.title {
+  font-weight: 800;
+}
+
+.msg {
+  margin-top: 6px;
+  color: var(--ng-muted);
+}

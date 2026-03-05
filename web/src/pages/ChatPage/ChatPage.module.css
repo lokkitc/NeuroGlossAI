@@ -1,0 +1,184 @@
+.root {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.left {
+  display: grid;
+  gap: 12px;
+}
+
+.leftHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.leftTitle {
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.newSessionCard {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.newSessionTop {
+  font-weight: 800;
+}
+
+.select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--ng-panel);
+  color: var(--ng-text);
+}
+
+.newSessionActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sessionList {
+  display: grid;
+  gap: 10px;
+}
+
+.sessionLink {
+  background: var(--ng-panel);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.sessionActive {
+  background: var(--ng-primary-soft);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.sessionTitle {
+  font-weight: 800;
+}
+
+.sessionMeta {
+  color: var(--ng-faint);
+  font-size: 12px;
+}
+
+.right {
+  display: grid;
+  gap: 12px;
+}
+
+.threadHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.threadTitle {
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.threadId {
+  color: var(--ng-faint);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.threadCard {
+  padding: 12px;
+}
+
+.turns {
+  display: grid;
+  gap: 10px;
+  max-height: calc(100vh - 310px);
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.emptyThread {
+  color: var(--ng-muted);
+  padding: 10px 2px;
+}
+
+.turnUser {
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: var(--ng-panel);
+}
+
+.turnAssistant {
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: var(--ng-primary-soft);
+}
+
+.turnUserAction {
+  padding: 2px 2px;
+  color: var(--ng-muted);
+  font-style: italic;
+}
+
+.turnAssistantAction {
+  padding: 2px 2px;
+  color: var(--ng-muted);
+  font-style: italic;
+}
+
+.turnRole {
+  font-size: 12px;
+  color: var(--ng-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.turnContent {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  line-height: 1.38;
+}
+
+.composer {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 70px;
+}
+
+.composerActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.errorText {
+  color: var(--ng-danger);
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+  .root {
+    grid-template-columns: 1fr;
+  }
+  .turns {
+    max-height: none;
+  }
+}

@@ -107,6 +107,7 @@ Rules:
 - If action is present, it should read like narrative text (as in Character.AI).
 - If dialogue is present, write it as natural speech (can include dashes, quotes).
 - It is allowed to return only action or only dialogue.
+- Language rule: respond in the same language as the user's dialogue messages in the transcript. Do NOT switch languages based on action blocks (marked with *...*).
 
 Output JSON format:
 {{

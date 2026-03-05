@@ -1,0 +1,126 @@
+.root {
+  display: grid;
+  gap: var(--ng-space-4);
+}
+
+.top {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--ng-space-4);
+  align-items: start;
+}
+
+.avatarWrap {
+  width: 84px;
+  height: 84px;
+}
+
+.avatarImg {
+  width: 84px;
+  height: 84px;
+  border-radius: 18px;
+  object-fit: cover;
+  display: block;
+}
+
+.avatarFallback {
+  width: 84px;
+  height: 84px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--ng-panel-2);
+  color: var(--ng-text);
+  font-weight: var(--ng-fw-bold);
+  font-size: var(--ng-fs-xl);
+}
+
+.headerText {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.nameRow {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.name {
+  font-weight: var(--ng-fw-bold);
+  font-size: var(--ng-fs-2xl);
+  line-height: var(--ng-lh-tight);
+}
+
+.slug {
+  color: var(--ng-faint);
+  font-size: var(--ng-fs-sm);
+}
+
+.desc {
+  color: var(--ng-muted);
+  line-height: var(--ng-lh-normal);
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill {
+  background: var(--ng-panel-2);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: var(--ng-fs-xs);
+  color: var(--ng-muted);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.section {
+  padding: var(--ng-space-4);
+}
+
+.sectionTitle {
+  font-weight: var(--ng-fw-semibold);
+  margin-bottom: 8px;
+}
+
+.sectionBody {
+  color: var(--ng-muted);
+  line-height: var(--ng-lh-normal);
+  white-space: pre-wrap;
+}
+
+.kv {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.k {
+  font-size: var(--ng-fs-xs);
+  color: var(--ng-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.v {
+  color: var(--ng-text);
+  font-family: var(--ng-font-mono);
+  font-size: var(--ng-fs-sm);
+  line-height: var(--ng-lh-relaxed);
+}
+
+@media (max-width: 720px) {
+  .top {
+    grid-template-columns: 1fr;
+  }
+}

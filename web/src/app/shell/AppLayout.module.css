@@ -1,0 +1,57 @@
+.root {
+  min-height: 100vh;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(14px);
+  background: rgba(11, 15, 23, 0.65);
+}
+
+.headerInner {
+  max-width: var(--ng-maxw);
+  margin: 0 auto;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.link {
+  color: var(--ng-muted);
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.active {
+  color: var(--ng-text);
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.main {
+  padding: 18px 0 42px;
+}
+
+.container {
+  max-width: var(--ng-maxw);
+  margin: 0 auto;
+  padding: 0 18px;
+}
