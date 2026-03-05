@@ -7,7 +7,8 @@ from app.api import deps
 from app.features.auth.service import AuthService
 from app.features.users.schemas import UserCreate, UserResponse, Token, RefreshTokenRequest
 from app.features.users.models import User
-from app.core.rate_limit import limiter
+from app.features.subscriptions.service import SubscriptionService
+from app.core.rate_limit import limiter, get_client_ip
 
 router = APIRouter()
 
@@ -43,8 +44,7 @@ async def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    xff = request.headers.get("X-Forwarded-For")
-    ip = (xff.split(",")[0].strip() if xff else None) or (getattr(request.client, "host", None))
+    ip = get_client_ip(request)
     app_version = request.headers.get("X-App-Version")
     return await svc.login(
         user=user,
@@ -63,8 +63,7 @@ async def refresh_access_token(
     body: RefreshTokenRequest,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    xff = request.headers.get("X-Forwarded-For")
-    ip = (xff.split(",")[0].strip() if xff else None) or (getattr(request.client, "host", None))
+    ip = get_client_ip(request)
     app_version = request.headers.get("X-App-Version")
     user_agent = request.headers.get("User-Agent")
     return await AuthService(db).refresh(
@@ -82,8 +81,7 @@ async def logout(
     body: RefreshTokenRequest,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    xff = request.headers.get("X-Forwarded-For")
-    ip = (xff.split(",")[0].strip() if xff else None) or (getattr(request.client, "host", None))
+    ip = get_client_ip(request)
     app_version = request.headers.get("X-App-Version")
     user_agent = request.headers.get("User-Agent")
     return await AuthService(db).logout(
@@ -116,8 +114,12 @@ async def cleanup_refresh_tokens(
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(
     current_user: User = Depends(deps.get_current_user),
+    db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     resp = UserResponse.model_validate(current_user)
+    tier, expires_at, _ = await SubscriptionService(db).get_subscription_status(user_id=current_user.id)
+    resp.subscription_tier = tier
+    resp.subscription_expires_at = expires_at
     resp.avatar_url = UserResponse._normalize_storageapi_urls(resp.avatar_url)
     resp.thumbnail_url = UserResponse._normalize_storageapi_urls(resp.thumbnail_url)
     resp.banner_url = UserResponse._normalize_storageapi_urls(resp.banner_url)

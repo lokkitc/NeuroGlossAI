@@ -21,7 +21,6 @@ from app.core.config import settings
 from app.core.ai.base import LLMProvider
 from app.core.ai.groq_provider import GroqProvider
 from app.features.ai.repository import AIIOpsRepository
-from app.features.topic_retrieval.service import TopicRetrievalService
 from app.utils.prompt_templates import (
     LESSON_SYSTEM_TEMPLATE,
     LESSON_TEXT_ONLY_TEMPLATE,
@@ -49,7 +48,6 @@ GenerationMode = Literal["fast", "balanced", "strict"]
 class AIService:
     def __init__(self, db: AsyncSession | None = None, provider: LLMProvider | None = None):
         self.provider = provider or self._select_provider()
-        self.topic_retrieval = TopicRetrievalService()
         self.db = db
 
     @staticmethod
@@ -1956,11 +1954,6 @@ class AIService:
         model_name = getattr(self.provider, "model", None) if getattr(self, "provider", None) else None
 
         verified = None
-        try:
-            r = await self.topic_retrieval.retrieve(topic)
-            verified = r.to_prompt_block() if r is not None else None
-        except Exception:
-            verified = None
 
         base_suffix = self._build_course_context_suffix(
             topic=topic,

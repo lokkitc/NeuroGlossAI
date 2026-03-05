@@ -41,22 +41,9 @@ class Settings(BaseSettings):
     AI_MAX_PROMPT_CHARS: int = 20000
     AI_MAX_RESPONSE_CHARS: int = 200000
 
-    TOPIC_RETRIEVAL_ENABLED: bool = False
-    TOPIC_RETRIEVAL_WIKI_LANG: str = "ru"
-    TOPIC_RETRIEVAL_TIMEOUT_SECONDS: int = 8
-    TOPIC_RETRIEVAL_CACHE_TTL_SECONDS: int = 86400
-    TOPIC_RETRIEVAL_MAX_ENTITIES: int = 20
-
-    TOPIC_RETRIEVAL_FANDOM_ENABLED: bool = False
-    TOPIC_RETRIEVAL_FANDOM_MAX_RESULTS: int = 5
-    TOPIC_RETRIEVAL_FANDOM_ROSTER_MAX: int = 80
-
     AI_TEMPERATURE_TEXT: float = 0.6
     AI_TEMPERATURE_JSON: float = 0.2
     AI_TEMPERATURE_REPAIR: float = 0.1
-    
-                
-    GEMINI_API_KEY: str = ""
 
           
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]

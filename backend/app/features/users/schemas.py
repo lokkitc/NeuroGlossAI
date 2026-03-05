@@ -181,10 +181,6 @@ class AdminUserResponse(BaseModel):
     location: Optional[str] = None
     social_links: Dict[str, Any] = Field(default_factory=dict)
 
-    subscription_tier: str = "free"
-    subscription_expires_at: Any | None = None
-    customer_id: Optional[str] = None
-
     last_ip: Optional[str] = None
     app_version: Optional[str] = None
     fcm_token: Optional[str] = None

@@ -5,7 +5,10 @@ from app.core.config import settings
 
                                          
 
-def _rate_limit_key_func(request):
+def get_client_ip(request) -> str | None:
+    if request is None:
+        return None
+
     if bool(getattr(settings, "RATE_LIMIT_TRUST_PROXY", False)):
         xff = request.headers.get("X-Forwarded-For")
         if xff:
@@ -18,7 +21,15 @@ def _rate_limit_key_func(request):
             if real_ip:
                 return real_ip
 
-    return get_remote_address(request)
+    client = getattr(request, "client", None)
+    host = getattr(client, "host", None)
+    if host:
+        return str(host)
+    return None
+
+
+def _rate_limit_key_func(request):
+    return get_client_ip(request) or get_remote_address(request)
 
 
 limiter = Limiter(key_func=_rate_limit_key_func)

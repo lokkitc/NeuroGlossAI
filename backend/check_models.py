@@ -11,11 +11,10 @@ import sys
                                                                                 
 sys.path.append(os.getcwd())
 
-from app.core.config import settings
-
 async def list_models():
-    api_key = settings.GEMINI_API_KEY
-    print(f"Проверяем ключ: {api_key[:5]}...")
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if api_key:
+        print(f"Проверяем ключ: {api_key[:5]}...")
     
     if not api_key:
         print("API key не найден!")

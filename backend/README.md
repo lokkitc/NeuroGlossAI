@@ -48,7 +48,7 @@ backend/
         groq_provider.py         # провайдер «Грок»
       events/
         base.py                  # EventBus + события
-        listeners.py             # XPListener, AchievementListener
+        listeners.py             # XPListener
     features/                    # feature-based модули (каноничный код)
       auth/ users/ chat/ characters/ rooms/ memory/
       ai/ course/ learning/ lessons/ vocabulary/ srs/

@@ -13,11 +13,13 @@ from app.models.base import Base
 # Alembic autogenerate relies on this being populated.
 from app.features.ai import models as _ai_models  # noqa: F401
 from app.features.auth import models as _auth_models  # noqa: F401
+from app.features.achievements import models as _achievements_models  # noqa: F401
 from app.features.characters import models as _characters_models  # noqa: F401
 from app.features.chat import models as _chat_models  # noqa: F401
 from app.features.memory import models as _memory_models  # noqa: F401
 from app.features.posts import models as _posts_models  # noqa: F401
 from app.features.rooms import models as _rooms_models  # noqa: F401
+from app.features.subscriptions import models as _subscriptions_models  # noqa: F401
 from app.features.themes import models as _themes_models  # noqa: F401
 from app.features.uploads import models as _uploads_models  # noqa: F401
 from app.features.users import models as _users_models  # noqa: F401

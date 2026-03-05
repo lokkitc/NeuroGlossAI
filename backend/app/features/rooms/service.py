@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.core.exceptions import EntityNotFoundException, ServiceException
 from app.features.common.db import begin_if_needed
+from app.features.characters.models import Character
 from app.features.rooms.models import Room, RoomParticipant
 from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
 from app.features.rooms.schemas import RoomCreate, RoomUpdate
@@ -31,6 +33,17 @@ class RoomService:
         if not body.participant_character_ids:
             raise ServiceException("participant_character_ids is empty")
 
+        unique_ids: list[UUID] = list(dict.fromkeys(body.participant_character_ids))
+        stmt = (
+            select(Character.id)
+            .where(Character.owner_user_id == owner_user_id)
+            .where(Character.id.in_(unique_ids))
+        )
+        res = await self.db.execute(stmt)
+        allowed_ids = {row[0] for row in res.all()}
+        if len(allowed_ids) != len(unique_ids):
+            raise EntityNotFoundException("Character")
+
         room = Room(
             owner_user_id=owner_user_id,
             title=body.title,
@@ -41,7 +54,7 @@ class RoomService:
 
         async with begin_if_needed(self.db):
             await self.rooms.create(room)
-            for cid in body.participant_character_ids:
+            for cid in unique_ids:
                 part = RoomParticipant(room_id=room.id, character_id=cid, priority=0, is_pinned=False)
                 await self.participants.create(part)
 

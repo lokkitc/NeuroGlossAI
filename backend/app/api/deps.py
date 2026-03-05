@@ -7,6 +7,7 @@ from app.core import security
 from app.core.config import settings
 from app.core.exceptions import NeuroGlossException
 from app.core.database import get_db
+from app.features.subscriptions.service import SubscriptionService
 from app.features.users.models import User
 from app.features.users.schemas import TokenData
 from uuid import UUID
@@ -37,8 +38,11 @@ def subscription_features_for_tier(tier: str) -> dict[str, bool]:
 
 
 def require_subscription_feature(feature: str):
-    async def _dep(current_user: User = Depends(get_current_user)) -> User:
-        tier = (getattr(current_user, "subscription_tier", None) or "free").strip() or "free"
+    async def _dep(
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> User:
+        tier, _, _ = await SubscriptionService(db).get_subscription_status(user_id=current_user.id)
         features = subscription_features_for_tier(tier)
         if not bool(features.get(feature)):
             raise NeuroGlossException(

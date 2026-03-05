@@ -3,10 +3,11 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
 
 from app.api import deps
 from app.features.users.models import User
-from app.features.users.service import UserService
+from app.features.subscriptions.service import SubscriptionService
 
 
 router = APIRouter()
@@ -29,6 +30,23 @@ class AdminSetSubscriptionRequest(BaseModel):
     expires_at: Any | None = None
 
 
+class SubscriptionHistoryItem(BaseModel):
+    id: str
+    user_id: str
+    tier: str
+    status: str
+    started_at: Any | None = None
+    expires_at: Any | None = None
+    ended_at: Any | None = None
+    provider: str | None = None
+    external_customer_id: str | None = None
+    external_subscription_id: str | None = None
+    created_at: Any | None = None
+
+    class Config:
+        from_attributes = True
+
+
 def _features(tier: str) -> dict[str, bool]:
     return deps.subscription_features_for_tier(tier)
 
@@ -38,7 +56,7 @@ async def get_my_subscription(
     current_user: User = Depends(deps.get_current_user),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    tier, expires_at, is_active = await UserService(db).get_subscription_status(current_user=current_user)
+    tier, expires_at, is_active = await SubscriptionService(db).get_subscription_status(user_id=current_user.id)
     return SubscriptionStatusResponse(
         tier=tier,
         expires_at=expires_at,
@@ -53,7 +71,10 @@ async def cancel_my_subscription(
     current_user: User = Depends(deps.get_current_user),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    tier, expires_at, is_active = await UserService(db).cancel_subscription(current_user=current_user, cancel_now=body.cancel_now)
+    tier, expires_at, is_active = await SubscriptionService(db).cancel_subscription(
+        user=current_user,
+        cancel_now=body.cancel_now,
+    )
     return SubscriptionStatusResponse(
         tier=tier,
         expires_at=expires_at,
@@ -62,13 +83,36 @@ async def cancel_my_subscription(
     )
 
 
+@router.get("/history", response_model=list[SubscriptionHistoryItem])
+async def my_subscription_history(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(deps.get_current_user),
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    items = await SubscriptionService(db).list_history(user_id=current_user.id, skip=skip, limit=limit)
+    return [SubscriptionHistoryItem.model_validate(x, from_attributes=True) for x in items]
+
+
+@router.get("/admin/history/{user_id}", response_model=list[SubscriptionHistoryItem])
+async def admin_subscription_history(
+    user_id: UUID,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(deps.require_admin),
+    db: AsyncSession = Depends(deps.get_db),
+) -> Any:
+    items = await SubscriptionService(db).list_history(user_id=user_id, skip=skip, limit=limit)
+    return [SubscriptionHistoryItem.model_validate(x, from_attributes=True) for x in items]
+
+
 @router.post("/admin/set", response_model=SubscriptionStatusResponse)
 async def admin_set_subscription(
     body: AdminSetSubscriptionRequest,
     current_user: User = Depends(deps.require_admin),
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
-    tier, expires_at, is_active = await UserService(db).admin_set_subscription(
+    tier, expires_at, is_active = await SubscriptionService(db).admin_set_subscription(
         admin_user=current_user,
         user_id=body.user_id,
         tier=body.tier,

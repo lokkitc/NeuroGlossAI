@@ -16,6 +16,8 @@ from app.core.database import AsyncSessionLocal
 import logging
 from app.core.logging_json import JsonFormatter
 from app.core.request_context import request_id_ctx, RequestIdFilter
+from app.core.events.base import event_bus, LevelCompletedEvent
+from app.core.events.listeners import XPListener, AchievementListener
 
                        
 root_logger = logging.getLogger()
@@ -170,6 +172,12 @@ if settings.BACKEND_CORS_ORIGINS:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.on_event("startup")
+async def _subscribe_event_listeners() -> None:
+    event_bus.subscribe(LevelCompletedEvent, XPListener())
+    event_bus.subscribe(LevelCompletedEvent, AchievementListener())
 
 
 @app.get("/health")

@@ -17,6 +17,7 @@ from app.core.exceptions import NeuroGlossException
 from app.features.users.schemas import UserResponse, UserUpdateLanguages, UserUpdate
 from app.features.users.models import User
 from app.features.users.service import UserService
+from app.features.subscriptions.service import SubscriptionService
 
 router = APIRouter()
 
@@ -38,7 +39,15 @@ async def update_languages(
     """
     Обновление родного и целевого языков пользователя (Текущий курс).
     """
-    return await UserService(db).update_languages(current_user=current_user, languages=languages)
+    user = await UserService(db).update_languages(current_user=current_user, languages=languages)
+    resp = UserResponse.model_validate(user)
+    tier, expires_at, _ = await SubscriptionService(db).get_subscription_status(user_id=current_user.id)
+    resp.subscription_tier = tier
+    resp.subscription_expires_at = expires_at
+    resp.avatar_url = UserResponse._normalize_storageapi_urls(resp.avatar_url)
+    resp.thumbnail_url = UserResponse._normalize_storageapi_urls(resp.thumbnail_url)
+    resp.banner_url = UserResponse._normalize_storageapi_urls(resp.banner_url)
+    return resp
 
 
 @router.patch("/me", response_model=UserResponse)
@@ -53,6 +62,9 @@ async def update_user_me(
     """
     user = await UserService(db).update_me(current_user=current_user, body=user_in)
     resp = UserResponse.model_validate(user)
+    tier, expires_at, _ = await SubscriptionService(db).get_subscription_status(user_id=current_user.id)
+    resp.subscription_tier = tier
+    resp.subscription_expires_at = expires_at
     resp.avatar_url = UserResponse._normalize_storageapi_urls(resp.avatar_url)
     resp.thumbnail_url = UserResponse._normalize_storageapi_urls(resp.thumbnail_url)
     resp.banner_url = UserResponse._normalize_storageapi_urls(resp.banner_url)

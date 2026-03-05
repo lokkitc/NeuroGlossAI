@@ -15,7 +15,7 @@ class PublicUserService:
         self.db = db
 
     async def list_users(self, *, q: str | None, skip: int, limit: int) -> list[User]:
-        stmt = select(User)
+        stmt = select(User).where(User.is_public.is_(True)).where(User.is_active.is_(True))
 
         if q:
             like = f"%{q.strip()}%"
@@ -26,7 +26,12 @@ class PublicUserService:
         return res.scalars().all()
 
     async def get_user_by_username(self, *, username: str) -> User:
-        res = await self.db.execute(select(User).where(func.lower(User.username) == func.lower(username)))
+        res = await self.db.execute(
+            select(User)
+            .where(func.lower(User.username) == func.lower(username))
+            .where(User.is_public.is_(True))
+            .where(User.is_active.is_(True))
+        )
         user = res.scalars().first()
         if user is None:
             raise EntityNotFoundException(entity_name="User", entity_id=str(username))

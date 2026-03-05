@@ -32,10 +32,6 @@ class User(Base):
     location = Column(String, nullable=True)
     social_links = Column(JSON, default=dict)
 
-    subscription_tier = Column(String, nullable=False, default="free")
-    subscription_expires_at = Column(DateTime(timezone=True), nullable=True)
-    customer_id = Column(String, nullable=True)
-
     last_ip = Column(String, nullable=True)
     app_version = Column(String, nullable=True)
     fcm_token = Column(String, nullable=True)
