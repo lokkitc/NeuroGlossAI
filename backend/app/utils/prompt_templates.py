@@ -84,6 +84,17 @@ NEW DIALOGUE:
 """
 
 
+CHARACTER_ROLEPLAY_ACTIONS_TEMPLATE = """You are writing an immersive roleplay chat response.
+
+Output rules:
+- Stay in-character and keep continuity.
+- Mix short action/narration and dialogue (use *asterisks* for actions if it fits).
+- Do NOT add out-of-world explanations.
+- Keep it vivid but concise.
+- End EVERY assistant message with a short prompt to the user: "Ваши действия?" (or an equivalent short question that invites the next action).
+"""
+
+
 ROOM_CHAT_TURN_JSON_TEMPLATE = """You are generating the next multi-character turn. Follow the SYSTEM rules below.
 
 {transcript}

@@ -10,21 +10,19 @@ from sqlalchemy import select
 
 from app.core.exceptions import EntityNotFoundException, ServiceException
 from app.features.common.db import begin_if_needed
-from app.features.rooms.models import RoomParticipant
-from app.features.chat.models import ChatSession, ChatTurn, ChatSessionSummary, ModerationEvent
-from app.features.memory.models import MemoryItem
-from app.features.characters.repository import CharacterRepository
-from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
+from app.features.chat.models import ChatSession, ChatTurn, ChatSessionSummary, ModerationEvent, RoomParticipant
 from app.features.chat.repository import (
     ChatSessionRepository,
     ChatTurnRepository,
     ChatSummaryRepository,
     ModerationEventRepository,
 )
+from app.features.characters.repository import CharacterRepository
+from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
 from app.features.memory.repository import MemoryRepository
 from app.features.ai.ai_service import ai_service
 from app.core.config import settings
-from app.utils.prompt_templates import CHAT_SESSION_SUMMARY_TEMPLATE
+from app.utils.prompt_templates import CHAT_SESSION_SUMMARY_TEMPLATE, CHARACTER_ROLEPLAY_ACTIONS_TEMPLATE
 from app.features.posts.service import PostService
 from app.features.posts.schemas import PostCreate
 from app.features.posts.models import Post
@@ -380,6 +378,7 @@ class ChatService:
             ch = await self.characters.get(session.character_id)
             if not ch:
                 raise EntityNotFoundException("Character", session.character_id)
+            system_parts.append(CHARACTER_ROLEPLAY_ACTIONS_TEMPLATE)
             system_parts.append(ch.system_prompt or "")
             if ch.style_prompt:
                 system_parts.append(ch.style_prompt)
