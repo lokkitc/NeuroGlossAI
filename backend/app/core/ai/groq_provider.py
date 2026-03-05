@@ -19,8 +19,6 @@ class GroqProvider(LLMProvider):
     def __init__(self, model: str = "llama-3.3-70b-versatile"):
         self.api_key = settings.GROQ_API_KEY
         if not self.api_key:
-                                                                                       
-                                                                                               
             logger.warning("GROQ_API_KEY is not set.")
         self.client = AsyncGroq(api_key=self.api_key or "DUMMY")
         
@@ -28,6 +26,8 @@ class GroqProvider(LLMProvider):
         logger.debug("Selected Groq model: %s", self.model)
 
     async def _ensure_client(self):
+        if not self.api_key:
+            raise ValueError("GROQ_API_KEY is not set")
         if not self.client:
             raise ValueError("Groq client is not initialized. Check GROQ_API_KEY.")
 

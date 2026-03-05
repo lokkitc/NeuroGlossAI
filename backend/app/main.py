@@ -90,6 +90,14 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.exception_handler(NeuroGlossException)
 async def neurogloss_exception_handler(request: Request, exc: NeuroGlossException):
     request_id = getattr(request.state, "request_id", None)
+    if settings.ENV != "production":
+        logger.warning(
+            "NeuroGlossException request_id=%s status=%s code=%s detail=%s",
+            request_id,
+            getattr(exc, "status_code", None),
+            getattr(exc, "code", None),
+            str(getattr(exc, "detail", "")),
+        )
     message = exc.detail
     if settings.ENV == "production" and exc.status_code >= 500:
         message = "Internal Server Error"
