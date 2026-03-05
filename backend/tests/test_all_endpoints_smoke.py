@@ -67,9 +67,31 @@ async def test_characters_flow_smoke(client, user_auth_headers):
 
 @pytest.mark.asyncio
 async def test_rooms_flow_smoke(client, user_auth_headers):
+    # Rooms require at least one participant_character_id.
+    r0 = await client.post(
+        "/api/v1/characters/me",
+        json={
+            "slug": "room_char",
+            "display_name": "RoomChar",
+            "description": "d",
+            "system_prompt": "You are room char",
+            "is_public": False,
+            "is_nsfw": False,
+        },
+        headers=user_auth_headers,
+    )
+    assert r0.status_code == 200, r0.text
+    ch = r0.json()
+
     r = await client.post(
         "/api/v1/rooms/me",
-        json={"title": "Room", "description": "d", "is_public": False, "is_nsfw": False, "participant_character_ids": []},
+        json={
+            "title": "Room",
+            "description": "d",
+            "is_public": False,
+            "is_nsfw": False,
+            "participant_character_ids": [ch["id"]],
+        },
         headers=user_auth_headers,
     )
     assert r.status_code == 200, r.text

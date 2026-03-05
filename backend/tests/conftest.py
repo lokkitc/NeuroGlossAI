@@ -36,6 +36,13 @@ def anyio_backend():
 def app() -> Any:
     from app.main import app as fastapi_app
 
+    limiter = getattr(fastapi_app.state, "limiter", None)
+    if limiter is not None:
+        try:
+            limiter.enabled = False
+        except Exception:
+            pass
+
     return fastapi_app
 
 
