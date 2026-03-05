@@ -6,6 +6,7 @@ from typing import AsyncGenerator, Any
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession
+import sqlalchemy as sa
 from sqlalchemy import select
 
 
@@ -19,7 +20,9 @@ os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DEBUG", "false")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./data/test_api.db")
+
+# Force tests to use SQLite even if the outer environment sets DATABASE_URL (e.g. Railway).
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test_api.db"
 
 os.makedirs("./data", exist_ok=True)
 
@@ -64,13 +67,21 @@ async def _db_schema(async_sessionmaker) -> AsyncGenerator[None, None]:
     from app.features.users import models as _users_models  # noqa: F401
 
     async with engine.begin() as conn:
+        # Reset schema for each test without relying on SQLAlchemy drop_all(),
+        # which can fail on cyclic foreign keys.
+        if conn.dialect.name == "sqlite":
+            await conn.execute(sa.text("PRAGMA foreign_keys=OFF"))
+
+        # Drop all tables explicitly (reverse order gives best effort).
+        for table in reversed(list(Base.metadata.tables.values())):
+            await conn.execute(sa.text(f'DROP TABLE IF EXISTS "{table.name}"'))
+
+        if conn.dialect.name == "sqlite":
+            await conn.execute(sa.text("PRAGMA foreign_keys=ON"))
+
         await conn.run_sync(Base.metadata.create_all)
 
-    try:
-        yield
-    finally:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
+    yield
 
 
 @pytest.fixture
