@@ -36,6 +36,7 @@ from app.utils.prompt_templates import (
     ROLEPLAY_SYSTEM_TEMPLATE,
     PATH_GENERATION_TEMPLATE,
     ROOM_CHAT_TURN_JSON_TEMPLATE,
+    CHARACTER_CHAT_TURN_JSON_TEMPLATE,
 )
 from app.core.exceptions import ServiceException
 
@@ -113,6 +114,53 @@ class AIService:
             await self._log_chat_event(
                 db=db,
                 operation="chat_turn",
+                latency_ms=latency_ms,
+                quality_status="error",
+                generation_mode=generation_mode,
+                error_codes=["provider_error"],
+            )
+            raise ServiceException(f"AI provider error: {str(e)}")
+
+    async def generate_character_chat_turn_json(
+        self,
+        *,
+        db: AsyncSession | None,
+        messages: list[dict[str, str]],
+        temperature: float | None = None,
+        generation_mode: str = "deep",
+    ) -> dict[str, Any]:
+        started = time.monotonic()
+        try:
+            transcript_lines: list[str] = []
+            for m in messages:
+                role = (m.get("role") or "").strip().lower()
+                content = m.get("content", "") or ""
+                if not content.strip():
+                    continue
+                if role == "system":
+                    transcript_lines.append("[SYSTEM]\n" + content.strip())
+                elif role == "user":
+                    transcript_lines.append("[USER] " + content.strip())
+                else:
+                    transcript_lines.append("[ASSISTANT] " + content.strip())
+
+            prompt = CHARACTER_CHAT_TURN_JSON_TEMPLATE.format(transcript="\n\n".join(transcript_lines))
+
+            data = await self.provider.generate_json(prompt, temperature=temperature)
+            latency_ms = int((time.monotonic() - started) * 1000)
+            await self._log_chat_event(
+                db=db,
+                operation="chat_turn_json",
+                latency_ms=latency_ms,
+                quality_status="ok",
+                generation_mode=generation_mode,
+            )
+            return data
+        except Exception as e:
+            latency_ms = int((time.monotonic() - started) * 1000)
+            await self._log_chat_event(
+                db=db,
+                operation="chat_turn_json",
                 latency_ms=latency_ms,
                 quality_status="error",
                 generation_mode=generation_mode,

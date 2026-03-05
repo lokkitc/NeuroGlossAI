@@ -84,22 +84,35 @@ NEW DIALOGUE:
 """
 
 
-CHARACTER_ROLEPLAY_ACTIONS_TEMPLATE = """You are writing an immersive roleplay chat response.
-
-Output rules:
-- Stay in-character and keep continuity.
-- Mix short action/narration and dialogue (use *asterisks* for actions if it fits).
-- Do NOT add out-of-world explanations.
-- Keep it vivid but concise.
-- End EVERY assistant message with a short prompt to the user: "Ваши действия?" (or an equivalent short question that invites the next action).
-"""
-
-
 ROOM_CHAT_TURN_JSON_TEMPLATE = """You are generating the next multi-character turn. Follow the SYSTEM rules below.
 
 {transcript}
 
 IMPORTANT: Output ONLY valid JSON: {{"speaker": string, "message": string}}.
+"""
+
+
+CHARACTER_CHAT_TURN_JSON_TEMPLATE = """You are continuing a roleplay chat.
+
+TRANSCRIPT:
+{transcript}
+
+Write the assistant's next turn as JSON with two channels:
+- action: scene/narration/physical actions (no quotes, no speaker labels). Optional.
+- dialogue: what the character says out loud. Optional.
+
+Rules:
+- Output ONLY valid JSON. No markdown. No extra keys.
+- Keep continuity with the transcript. Do not invent unrelated facts.
+- If action is present, it should read like narrative text (as in Character.AI).
+- If dialogue is present, write it as natural speech (can include dashes, quotes).
+- It is allowed to return only action or only dialogue.
+
+Output JSON format:
+{
+  "action": "...",
+  "dialogue": "..."
+}
 """
 
 

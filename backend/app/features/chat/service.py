@@ -12,19 +12,19 @@ from app.core.exceptions import EntityNotFoundException, ServiceException
 from app.features.common.db import begin_if_needed
 from app.features.rooms.models import RoomParticipant
 from app.features.chat.models import ChatSession, ChatTurn, ChatSessionSummary, ModerationEvent
+from app.features.memory.models import MemoryItem
+from app.features.characters.repository import CharacterRepository
+from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
 from app.features.chat.repository import (
     ChatSessionRepository,
     ChatTurnRepository,
     ChatSummaryRepository,
     ModerationEventRepository,
 )
-from app.features.characters.repository import CharacterRepository
-from app.features.rooms.repository import RoomRepository, RoomParticipantRepository
 from app.features.memory.repository import MemoryRepository
-from app.features.memory.models import MemoryItem
 from app.features.ai.ai_service import ai_service
 from app.core.config import settings
-from app.utils.prompt_templates import CHAT_SESSION_SUMMARY_TEMPLATE, CHARACTER_ROLEPLAY_ACTIONS_TEMPLATE
+from app.utils.prompt_templates import CHAT_SESSION_SUMMARY_TEMPLATE
 from app.features.posts.service import PostService
 from app.features.posts.schemas import PostCreate
 from app.features.posts.models import Post
@@ -380,7 +380,6 @@ class ChatService:
             ch = await self.characters.get(session.character_id)
             if not ch:
                 raise EntityNotFoundException("Character", session.character_id)
-            system_parts.append(CHARACTER_ROLEPLAY_ACTIONS_TEMPLATE)
             system_parts.append(ch.system_prompt or "")
             if ch.style_prompt:
                 system_parts.append(ch.style_prompt)
@@ -459,36 +458,82 @@ class ChatService:
             try:
                                    
                 next_idx = await self.sessions.next_turn_index(session_id)
-                user_turn = ChatTurn(session_id=session_id, turn_index=next_idx, role="user", content=user_message)
+                raw_user_message = user_message
+                cleaned_user_message = raw_user_message
+                user_kind = "dialogue"
+
+                m = (raw_user_message or "").strip()
+                if m.lower().startswith("/me "):
+                    user_kind = "action"
+                    cleaned_user_message = m[4:].strip()
+                elif len(m) >= 2 and m.startswith("*") and m.endswith("*"):
+                    inner = m[1:-1].strip()
+                    if inner:
+                        user_kind = "action"
+                        cleaned_user_message = inner
+
+                user_turn = ChatTurn(
+                    session_id=session_id,
+                    turn_index=next_idx,
+                    role="user",
+                    content=cleaned_user_message,
+                    meta={"kind": user_kind},
+                )
                 async with begin_if_needed(self.db):
                     await self.turns.create(user_turn)
 
-                await self._moderate(owner_user_id=owner_user_id, session_id=session_id, turn_id=user_turn.id, content=user_message)
+                await self._moderate(
+                    owner_user_id=owner_user_id,
+                    session_id=session_id,
+                    turn_id=user_turn.id,
+                    content=raw_user_message,
+                )
 
                 messages, used_mem, room_map, temperature = await self._build_messages_for_llm(
                     session=session,
-                    user_message=user_message,
+                    user_message=cleaned_user_message,
                 )
 
                 assistant_turns: list[ChatTurn] = []
                 next_idx2 = next_idx + 1
 
                 if session.character_id:
-                    assistant_text = await ai_service.generate_character_chat_turn(
+                    data = await ai_service.generate_character_chat_turn_json(
                         db=self.db,
                         messages=messages,
                         temperature=temperature,
                     )
-                    assistant_turn = ChatTurn(
-                        session_id=session_id,
-                        turn_index=next_idx2,
-                        role="assistant",
-                        character_id=session.character_id,
-                        content=assistant_text,
-                    )
+
+                    action = str((data or {}).get("action") or "").strip()
+                    dialogue = str((data or {}).get("dialogue") or "").strip()
+                    if not action and not dialogue:
+                        raise ServiceException("Character response invalid: missing action/dialogue")
+
                     async with begin_if_needed(self.db):
-                        await self.turns.create(assistant_turn)
-                    assistant_turns.append(assistant_turn)
+                        if action:
+                            assistant_turn_action = ChatTurn(
+                                session_id=session_id,
+                                turn_index=next_idx2,
+                                role="assistant",
+                                character_id=session.character_id,
+                                content=action,
+                                meta={"kind": "action"},
+                            )
+                            await self.turns.create(assistant_turn_action)
+                            assistant_turns.append(assistant_turn_action)
+                            next_idx2 += 1
+
+                        if dialogue:
+                            assistant_turn_dialogue = ChatTurn(
+                                session_id=session_id,
+                                turn_index=next_idx2,
+                                role="assistant",
+                                character_id=session.character_id,
+                                content=dialogue,
+                                meta={"kind": "dialogue"},
+                            )
+                            await self.turns.create(assistant_turn_dialogue)
+                            assistant_turns.append(assistant_turn_dialogue)
                 else:
                                                              
                     data = await ai_service.generate_room_chat_turn_json(
@@ -510,7 +555,7 @@ class ChatService:
                         role="assistant",
                         character_id=character_id,
                         content=message,
-                        meta={"speaker": speaker},
+                        meta={"speaker": speaker, "kind": "dialogue"},
                     )
                     async with begin_if_needed(self.db):
                         await self.turns.create(assistant_turn)
